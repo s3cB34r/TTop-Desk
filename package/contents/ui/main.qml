@@ -1,9 +1,6 @@
 /*
  * SPDX-FileCopyrightText: 2026 Yannic Kauffmann
  * SPDX-License-Identifier: GPL-3.0-or-later
- *
- * Milestone 1.0 intentionally uses static values. A future shared TTop Core
- * backend can replace this model without changing the presentation structure.
  */
 
 import QtQuick 2.15
@@ -11,14 +8,23 @@ import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.components 2.0 as PlasmaComponents
 import org.kde.plasma.plasmoid 2.0
+import "components" as Components
 
 Item {
     id: root
+
+    // Set to true while developing to log system-monitor sensor discovery.
+    property bool debugMetrics: false
 
     Plasmoid.switchWidth: PlasmaCore.Units.gridUnit * 12
     Plasmoid.switchHeight: PlasmaCore.Units.gridUnit * 9
     Plasmoid.compactRepresentation: compactRepresentation
     Plasmoid.fullRepresentation: fullRepresentation
+
+    MetricsProvider {
+        id: metrics
+        debugMetrics: root.debugMetrics
+    }
 
     Component {
         id: compactRepresentation
@@ -54,9 +60,9 @@ Item {
             id: card
 
             Layout.minimumWidth: PlasmaCore.Units.gridUnit * 12
-            Layout.minimumHeight: PlasmaCore.Units.gridUnit * 9
-            Layout.preferredWidth: PlasmaCore.Units.gridUnit * 16
-            Layout.preferredHeight: PlasmaCore.Units.gridUnit * 13
+            Layout.minimumHeight: PlasmaCore.Units.gridUnit * 8
+            Layout.preferredWidth: PlasmaCore.Units.gridUnit * 17
+            Layout.preferredHeight: PlasmaCore.Units.gridUnit * 10
             implicitWidth: Layout.preferredWidth
             implicitHeight: Layout.preferredHeight
 
@@ -66,15 +72,6 @@ Item {
                                   PlasmaCore.Theme.highlightColor.g,
                                   PlasmaCore.Theme.highlightColor.b, 0.45)
             border.width: 1
-
-            ListModel {
-                id: metricModel
-
-                ListElement { metricName: "CPU"; metricValue: "-- %"; progress: 0 }
-                ListElement { metricName: "RAM"; metricValue: "-- %"; progress: 0 }
-                ListElement { metricName: "Network"; metricValue: "-- KiB/s"; progress: 0 }
-                ListElement { metricName: "Temperature"; metricValue: "-- °C"; progress: 0 }
-            }
 
             ColumnLayout {
                 anchors.fill: parent
@@ -107,36 +104,22 @@ Item {
                     opacity: 0.45
                 }
 
-                Repeater {
-                    model: metricModel
+                Components.MetricRow {
+                    Layout.fillWidth: true
+                    metricLabel: "CPU"
+                    valueText: metrics.cpuAvailable
+                               ? metrics.cpuPercent.toFixed(1) + "%"
+                               : ""
+                    progressValue: metrics.cpuPercent
+                    availabilityState: metrics.cpuState
+                }
 
-                    delegate: ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-
-                        RowLayout {
-                            Layout.fillWidth: true
-
-                            PlasmaComponents.Label {
-                                Layout.fillWidth: true
-                                text: metricName
-                                color: "#f5f5f5"
-                            }
-
-                            PlasmaComponents.Label {
-                                text: metricValue
-                                color: PlasmaCore.Theme.highlightColor
-                                font.family: "monospace"
-                            }
-                        }
-
-                        PlasmaComponents.ProgressBar {
-                            Layout.fillWidth: true
-                            minimumValue: 0
-                            maximumValue: 100
-                            value: progress
-                        }
-                    }
+                Components.MetricRow {
+                    Layout.fillWidth: true
+                    metricLabel: "RAM"
+                    valueText: metrics.memoryDisplayText
+                    progressValue: metrics.memoryPercent
+                    availabilityState: metrics.memoryState
                 }
 
                 Item {

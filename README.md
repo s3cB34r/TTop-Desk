@@ -4,11 +4,16 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.0 is a static widget skeleton for KDE Plasma 5.27. It presents a
-dark system-monitor card with placeholder rows for CPU, RAM, network activity,
-and temperature. Live metrics and integration with a future shared TTop Core
-backend are planned for later milestones; this release has no Python backend or
-external runtime dependencies.
+Milestone 1.1 provides live total CPU utilization and physical memory usage on
+KDE Plasma 5.27. The dark system-monitor card refreshes approximately once per
+second and shows memory usage as both a percentage and binary used/total sizes.
+It prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma 5's
+native `ksystemstats` sensor API when a distribution ships the legacy
+DataEngine without its former backend. There is no Python backend or external
+runtime dependency.
+
+Network, temperature, GPU, disk, and process metrics remain future milestones,
+as does integration with a shared TTop Core backend.
 
 ## Prerequisites
 
@@ -36,6 +41,25 @@ The equivalent direct command is:
 
 ```bash
 plasmoidviewer -a "$(pwd)/package"
+```
+
+### Metric discovery debugging
+
+Plasma 5 system-monitor sensor names can differ between releases and
+installations. TTop Desk checks several known CPU and physical-memory source
+names, uses the first source that returns valid data, and displays
+`Unavailable` when no compatible source responds.
+
+To inspect discovery, temporarily set `debugMetrics` to `true` near the top of
+`package/contents/ui/main.qml`, then launch the widget. Startup logging includes
+all advertised system-monitor sources, selected CPU and memory sources, and the
+reason an incompatible candidate was rejected. Return the property to `false`
+after troubleshooting to keep normal Plasma logs quiet.
+
+Follow relevant Plasma and QML messages with:
+
+```bash
+journalctl --user -f | grep -Ei "plasmashell|plasmoid|qml|ttop"
 ```
 
 ## Install, upgrade, and uninstall
@@ -75,9 +99,17 @@ The shell scripts remain the quickest development path.
 
 ## Architecture
 
-The QML presentation currently owns a small static metric model. A later
-milestone can replace that model with an adapter for a shared TTop Core backend,
-keeping data collection separate from the Plasma-specific user interface.
+`MetricsProvider.qml` isolates DataEngine discovery, the native Plasma 5 sensor
+fallback, defensive value parsing, normalization, and byte formatting from the
+presentation. `MetricRow.qml` provides the reusable metric display, while
+`main.qml` only composes the card. This boundary leaves room for a later shared
+TTop Core adapter without coupling system data collection to the Plasma-specific
+visual components.
+
+Legacy `mem/physical/*` values without unit metadata are assumed to be KiB,
+matching Plasma 5's KSysGuard sensor convention. Explicit unit metadata always
+takes precedence. Bare percentage values are treated as 0–100 unless their
+payload metadata identifies a 0–1 ratio.
 
 ## License
 
