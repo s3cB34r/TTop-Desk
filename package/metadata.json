@@ -1,0 +1,21 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Yannic Kauffmann"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "A compact system-monitor widget for KDE Plasma 5.",
+        "Icon": "utilities-system-monitor",
+        "Id": "io.github.s3cb34r.ttopdesk",
+        "License": "GPL-3.0-or-later",
+        "Name": "TTop Desk",
+        "ServiceTypes": [
+            "Plasma/Applet"
+        ],
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API": "declarativeappletscript",
+    "X-Plasma-MainScript": "ui/main.qml"
+}

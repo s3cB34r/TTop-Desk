@@ -1,0 +1,26 @@
+# CMake and build output
+/build/
+/build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.kate-swp
+*.swp
+*.swo
+*~
+
+# Python caches (reserved for future backend work)
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Temporary files
+*.log
+*.tmp
+*.temp
+.cache/
