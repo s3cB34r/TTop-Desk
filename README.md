@@ -4,19 +4,19 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.2 provides live total CPU utilization, physical memory usage, and
-network receive/transmit throughput on KDE Plasma 5.27. The compact dark card
-refreshes approximately once per second. Memory is shown as a percentage and
-binary used/total sizes; network rates automatically use B/s, KiB/s, MiB/s, or
-GiB/s.
+Milestone 1.3 provides live total CPU utilization, physical memory usage,
+network receive/transmit throughput, and CPU temperature on KDE Plasma 5.27.
+The compact dark card refreshes approximately once per second. Memory is shown
+as a percentage and binary used/total sizes; network rates automatically use
+B/s, KiB/s, MiB/s, or GiB/s; temperature is formatted in degrees Celsius.
 
 TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
 5's native `ksystemstats` sensor API when a distribution ships the legacy
 DataEngine without its former backend. There is no Python backend or external
 runtime dependency.
 
-Temperature, GPU, disk, and process metrics remain future milestones, as does
-integration with a shared TTop Core backend.
+GPU and disk temperatures and process metrics remain future milestones, as
+does integration with a shared TTop Core backend.
 
 ## Prerequisites
 
@@ -50,8 +50,9 @@ plasmoidviewer -a "$(pwd)/package"
 
 Plasma 5 system-monitor sensor names can differ between releases and
 installations. TTop Desk checks several known CPU and physical-memory source
-names and discovers network interfaces from the runtime sensor tree. Each
-metric displays `Unavailable` when no compatible source responds.
+names and discovers network interfaces and temperature sensors from the runtime
+sensor tree. Each metric displays `Unavailable` when no compatible source
+responds.
 
 For network throughput, TTop Desk prefers complete per-interface receive and
 transmit rate pairs. It aggregates all eligible pairs, supporting simultaneous
@@ -66,11 +67,26 @@ Loopback and common virtual, bridge, and tunnel prefixes such as `docker`,
 unfamiliar virtual-interface handling is intentionally conservative: unknown
 interfaces are not rejected merely because their names are unfamiliar.
 
+For CPU temperature, TTop Desk selects one representation rather than mixing
+package and core sensors. Its preference order is: CPU package, AMD Tctl/Tdie,
+x86 package, CPU aggregate, average of distinct valid CPU cores, then a single
+core. Values outside -20–150 °C are rejected rather than clamped. Direct Celsius
+and millidegree-Celsius payloads are supported. If a package-level source is
+unavailable but several core sensors remain valid, their average is displayed.
+Synthetic CPU temperature entries that report both a zero value and a zero
+maximum are treated as unavailable placeholders until a valid sample arrives.
+
+Temperature availability depends on kernel hardware-monitor drivers and the
+lm-sensors data exposed to Plasma. Missing support is handled gracefully and
+does not affect CPU, memory, or network metrics. GPU and disk temperatures are
+intentionally excluded from this milestone.
+
 To inspect discovery, temporarily set `debugMetrics` to `true` near the top of
 `package/contents/ui/main.qml`, then launch the widget. Startup logging includes
 advertised system-monitor sources, discovered network candidates, ignored
 interfaces and reasons, selected CPU and memory sources, selected network RX/TX
-pairs, and whether network values are direct rates or cumulative counters.
+pairs, temperature candidates and rejection reasons, the selected temperature
+category, and whether network values are direct rates or cumulative counters.
 Return the property to `false` after troubleshooting to keep normal Plasma logs
 quiet.
 
@@ -79,6 +95,15 @@ Follow relevant Plasma and QML messages with:
 ```bash
 journalctl --user -f | grep -Ei "plasmashell|plasmoid|qml|ttop"
 ```
+
+For manual hardware-sensor diagnosis, users may also run:
+
+```bash
+sensors
+ls /sys/class/hwmon
+```
+
+These commands are not run by TTop Desk.
 
 ## Install, upgrade, and uninstall
 
@@ -118,13 +143,14 @@ The shell scripts remain the quickest development path.
 ## Architecture
 
 `MetricsProvider.qml` isolates DataEngine discovery, network-interface
-selection and aggregation, counter-to-rate conversion, the native Plasma 5
-sensor fallback, defensive value parsing, normalization, and formatting from
-the presentation. `MetricRow.qml` provides percentage metric displays,
-`NetworkRow.qml` presents throughput without a fake progress scale, and
-`main.qml` only composes the card. This boundary leaves room for a later shared
-TTop Core adapter without coupling system data collection to the Plasma-specific
-visual components.
+selection and aggregation, temperature preference and core averaging,
+counter-to-rate conversion, the native Plasma 5 sensor fallback, defensive
+value parsing, normalization, and formatting from the presentation.
+`MetricRow.qml` provides percentage metric displays, `NetworkRow.qml` presents
+throughput without a fake progress scale, `TemperatureRow.qml` presents the
+selected thermal value, and `main.qml` only composes the card. This boundary
+leaves room for a later shared TTop Core adapter without coupling system data
+collection to the Plasma-specific visual components.
 
 Legacy `mem/physical/*` values without unit metadata are assumed to be KiB,
 matching Plasma 5's KSysGuard sensor convention. Explicit unit metadata always

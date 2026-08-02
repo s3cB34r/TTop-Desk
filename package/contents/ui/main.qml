@@ -60,9 +60,9 @@ Item {
             id: card
 
             Layout.minimumWidth: PlasmaCore.Units.gridUnit * 12
-            Layout.minimumHeight: PlasmaCore.Units.gridUnit * 10
+            Layout.minimumHeight: PlasmaCore.Units.gridUnit * 11
             Layout.preferredWidth: PlasmaCore.Units.gridUnit * 17
-            Layout.preferredHeight: PlasmaCore.Units.gridUnit * 13
+            Layout.preferredHeight: PlasmaCore.Units.gridUnit * 14
             implicitWidth: Layout.preferredWidth
             implicitHeight: Layout.preferredHeight
 
@@ -120,6 +120,13 @@ Item {
                     valueText: metrics.memoryDisplayText
                     progressValue: metrics.memoryPercent
                     availabilityState: metrics.memoryState
+                }
+
+                Components.TemperatureRow {
+                    Layout.fillWidth: true
+                    valueText: metrics.temperatureDisplayText
+                    availabilityState: metrics.temperatureState
+                    severity: metrics.temperatureSeverity
                 }
 
                 Components.NetworkRow {

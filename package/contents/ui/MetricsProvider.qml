@@ -51,6 +51,18 @@ Item {
                                                           : ""
     property var activeNetworkSources: []
 
+    readonly property bool temperatureAvailable: temperatureState === "available"
+    property real temperatureCelsius: 0
+    readonly property string temperatureDisplayText: temperatureAvailable
+                                                             ? temperatureCelsius.toFixed(1) + " °C"
+                                                             : ""
+    property string selectedTemperatureSource: ""
+    property string temperatureState: "loading"
+    readonly property string temperatureSeverity: !temperatureAvailable ? "unknown"
+                                                         : temperatureCelsius < 45 ? "cool"
+                                                         : temperatureCelsius < 70 ? "normal"
+                                                         : temperatureCelsius < 85 ? "warm" : "hot"
+
     readonly property var cpuCandidates: [
         { "name": "cpu/system/TotalLoad", "scale": 1 },
         { "name": "cpu/all/usage", "scale": 1 },
@@ -105,6 +117,17 @@ Item {
     property bool networkSampleLogged: false
     property var networkDiscoveryLogs: ({})
     property var ignoredInterfaceLogs: ({})
+
+    property var temperatureCandidateSources: []
+    property var temperatureDescriptors: ({})
+    property var temperatureSamples: ({})
+    property var selectedTemperatureSources: []
+    property string temperatureDiscoverySignature: "__uninitialized__"
+    property string temperatureCandidateSignature: "__uninitialized__"
+    property string temperatureSelectionSignature: "__uninitialized__"
+    property var temperatureDiscoveryLogs: ({})
+    property var temperatureRejectionLogs: ({})
+    property var temperatureSampleLogs: ({})
 
     property var receivedData: ({})
     property var rejectionLog: ({})
@@ -273,6 +296,9 @@ Item {
         for (index = 0; index < networkCandidateSources.length; ++index) {
             pushUnique(names, networkCandidateSources[index]);
         }
+        for (index = 0; index < temperatureCandidateSources.length; ++index) {
+            pushUnique(names, temperatureCandidateSources[index]);
+        }
         return names;
     }
 
@@ -296,6 +322,347 @@ Item {
         }
         collectSensorTreeSources(null, true, sources);
         return sources;
+    }
+
+    function temperatureNumber(payload) {
+        var number = extractNumber(payload);
+        if (isFinite(number)) {
+            return number;
+        }
+
+        var text = "";
+        if (typeof payload === "string") {
+            text = payload;
+        } else if (typeof payload === "object" && payload !== null) {
+            text = payloadText(payload, ["value", "Value", "data"]);
+        }
+        var match = text.match(/[-+]?(?:\d+\.?\d*|\.\d+)/);
+        if (match === null) {
+            return NaN;
+        }
+        number = Number(match[0]);
+        return isFinite(number) ? number : NaN;
+    }
+
+    function normalizeTemperatureCelsius(payload, sourceName) {
+        var units = payloadText(payload, ["units", "unit"]).toLowerCase();
+        var rawText = typeof payload === "string" ? payload.toLowerCase() : "";
+        if (units.indexOf("fahrenheit") !== -1 || units.indexOf("°f") !== -1
+                || rawText.indexOf("°f") !== -1) {
+            return NaN;
+        }
+
+        var value = temperatureNumber(payload);
+        if (!isFinite(value)) {
+            return NaN;
+        }
+
+        // hwmon-style sources commonly expose integer millidegrees Celsius.
+        if (Math.abs(value) >= 1000) {
+            value /= 1000;
+        }
+        var advertisedMaximum = typeof payload === "object" && payload !== null
+                                ? extractNumber(payload.maximum) : NaN;
+        if (value === 0 && advertisedMaximum === 0
+                && sourceName.indexOf("cpu/") === 0) {
+            return NaN;
+        }
+        if (!isFinite(value) || value < -20 || value > 150) {
+            return NaN;
+        }
+        return value;
+    }
+
+    function temperatureMetadataText(sourceName, payload) {
+        return (sourceName + " "
+                + payloadText(payload, ["name"]) + " "
+                + payloadText(payload, ["shortName"]) + " "
+                + payloadText(payload, ["description"])).toLowerCase();
+    }
+
+    function temperatureDescriptor(sourceName, payload, allowPending) {
+        var text = temperatureMetadataText(sourceName, payload);
+        if (sourceName.indexOf("\\") !== -1 || sourceName.indexOf("*") !== -1) {
+            return { "rejected": true, "reason": "template sensor identifier" };
+        }
+        if (text.indexOf("minimumtemperature") !== -1
+                || text.indexOf("minimum temperature") !== -1) {
+            return { "rejected": true,
+                     "reason": "minimum summary is not representative of package temperature" };
+        }
+        var hasCpuContext = text.indexOf("cpu") !== -1
+                            || text.indexOf("package") !== -1
+                            || text.indexOf("tctl") !== -1
+                            || text.indexOf("tdie") !== -1
+                            || text.indexOf("core") !== -1
+                            || text.indexOf("k10temp") !== -1
+                            || text.indexOf("zenpower") !== -1
+                            || text.indexOf("x86_pkg_temp") !== -1;
+
+        var rejectedTerms = [
+            "nvme", "nvidia", "battery", "wifi", "wireless", "chipset",
+            "motherboard", "mainboard", "spd5118", "r8169", "iwlwifi"
+        ];
+        for (var rejectedIndex = 0; rejectedIndex < rejectedTerms.length; ++rejectedIndex) {
+            if (text.indexOf(rejectedTerms[rejectedIndex]) !== -1) {
+                return { "rejected": true,
+                         "reason": "unrelated sensor term " + rejectedTerms[rejectedIndex] };
+            }
+        }
+        if (text.indexOf("gpu") !== -1 || text.indexOf("amdgpu") !== -1) {
+            return { "rejected": true, "reason": "GPU temperature sensor" };
+        }
+        if ((text.indexOf("edge") !== -1 || text.indexOf("junction") !== -1)
+                && text.indexOf("cpu") === -1) {
+            return { "rejected": true, "reason": "non-CPU edge or junction sensor" };
+        }
+        if ((text.indexOf("acpi") !== -1 || text.indexOf("thermal_zone") !== -1)
+                && !hasCpuContext) {
+            return { "rejected": true, "reason": "ACPI thermal zone without CPU context" };
+        }
+
+        var category = "";
+        var priority = 999;
+        if (text.indexOf("x86_pkg_temp") !== -1) {
+            category = "x86 package";
+            priority = 30;
+        } else if (text.indexOf("package") !== -1 || text.indexOf("cpu package") !== -1) {
+            category = "CPU package";
+            priority = 10;
+        } else if (text.indexOf("tctl") !== -1 || text.indexOf("tdie") !== -1) {
+            category = "AMD Tctl/Tdie";
+            priority = 20;
+        } else if (text.indexOf("k10temp") !== -1 || text.indexOf("zenpower") !== -1) {
+            category = "AMD CPU temperature";
+            priority = 25;
+        } else if (text.indexOf("cpu/all/averagetemperature") !== -1
+                   || text.indexOf("cpu aggregate") !== -1
+                   || text.indexOf("average cpu temperature") !== -1) {
+            category = "CPU aggregate";
+            priority = 40;
+        } else if (/cpu\/cpu\d+\/temperature/.test(text)
+                   || /core[\s/_-]*\d+/.test(text)) {
+            category = "CPU core";
+            priority = 50;
+        } else if (hasCpuContext && text.indexOf("temp") !== -1) {
+            category = "CPU aggregate";
+            priority = 45;
+        } else if (allowPending) {
+            category = "pending metadata";
+        } else {
+            return { "rejected": true, "reason": "no CPU context" };
+        }
+
+        var coreMatch = text.match(/cpu\/cpu(\d+)\/temperature/);
+        if (coreMatch === null) {
+            coreMatch = text.match(/core[\s/_-]*(\d+)/);
+        }
+        return {
+            "rejected": false,
+            "source": sourceName,
+            "category": category,
+            "priority": priority,
+            "coreKey": coreMatch !== null ? coreMatch[1] : sourceName
+        };
+    }
+
+    function isTemperatureSourceName(sourceName) {
+        var lower = sourceName.toLowerCase();
+        return lower.indexOf("temperature") !== -1
+               || lower.indexOf("thermal") !== -1
+               || /\/temp\d*(?:\/|$)/.test(lower);
+    }
+
+    function logTemperatureRejection(sourceName, reason) {
+        var key = sourceName + "|" + reason;
+        if (!debugMetrics || temperatureRejectionLogs[key]) {
+            return;
+        }
+        temperatureRejectionLogs[key] = true;
+        console.log("TTop Desk metrics: rejected temperature candidate "
+                    + sourceName + " (" + reason + ")");
+    }
+
+    function logTemperatureSampleRejection(sourceName, reason) {
+        var key = sourceName + "|" + reason;
+        if (!debugMetrics || temperatureSampleLogs[key]) {
+            return;
+        }
+        temperatureSampleLogs[key] = true;
+        console.log("TTop Desk metrics: ignored temperature sample from "
+                    + sourceName + " (" + reason + ")");
+    }
+
+    function discoverTemperatureSources() {
+        var allSources = allDiscoveredSources();
+        var discovered = [];
+        var candidates = [];
+        var descriptors = ({});
+        for (var index = 0; index < allSources.length; ++index) {
+            var sourceName = allSources[index];
+            if (!isTemperatureSourceName(sourceName)) {
+                continue;
+            }
+            discovered.push(sourceName);
+            var descriptor = temperatureDescriptor(sourceName, {}, true);
+            if (descriptor.rejected) {
+                logTemperatureRejection(sourceName, descriptor.reason);
+                continue;
+            }
+            candidates.push(sourceName);
+            descriptors[sourceName] = descriptor;
+        }
+
+        discovered.sort();
+        candidates.sort();
+        var discoverySignature = discovered.join("\n");
+        if (discoverySignature !== temperatureDiscoverySignature) {
+            temperatureDiscoverySignature = discoverySignature;
+            if (debugMetrics && !temperatureDiscoveryLogs[discoverySignature]) {
+                temperatureDiscoveryLogs[discoverySignature] = true;
+                console.log("TTop Desk metrics: discovered temperature sources: "
+                            + (discovered.length > 0 ? discovered.join(", ") : "(none)"));
+                console.log("TTop Desk metrics: temperature candidates requiring samples: "
+                            + (candidates.length > 0 ? candidates.join(", ") : "(none)"));
+                for (index = 0; index < candidates.length; ++index) {
+                    var candidateDescriptor = descriptors[candidates[index]];
+                    console.log("TTop Desk metrics: temperature candidate "
+                                + candidates[index] + " category "
+                                + candidateDescriptor.category + " priority "
+                                + candidateDescriptor.priority);
+                }
+            }
+        }
+
+        var candidateSignature = candidates.join("\n");
+        if (candidateSignature !== temperatureCandidateSignature) {
+            temperatureCandidateSignature = candidateSignature;
+            temperatureDescriptors = descriptors;
+            temperatureCandidateSources = candidates;
+        }
+        selectTemperatureSources();
+    }
+
+    function selectTemperatureSources() {
+        var validSamples = [];
+        for (var sourceName in temperatureSamples) {
+            var sample = temperatureSamples[sourceName];
+            if (sample !== undefined && isFinite(sample.value)
+                    && temperatureCandidateSources.indexOf(sourceName) !== -1) {
+                validSamples.push(sample);
+            }
+        }
+        validSamples.sort(function(left, right) {
+            if (left.descriptor.priority !== right.descriptor.priority) {
+                return left.descriptor.priority - right.descriptor.priority;
+            }
+            return left.source < right.source ? -1 : left.source > right.source ? 1 : 0;
+        });
+
+        var chosen = [];
+        if (validSamples.length > 0) {
+            if (validSamples[0].descriptor.priority < 50) {
+                chosen = [validSamples[0]];
+            } else {
+                var seenCores = ({});
+                for (var index = 0; index < validSamples.length; ++index) {
+                    var coreSample = validSamples[index];
+                    if (coreSample.descriptor.priority !== 50) {
+                        continue;
+                    }
+                    var coreKey = coreSample.descriptor.coreKey;
+                    if (!seenCores[coreKey]) {
+                        seenCores[coreKey] = true;
+                        chosen.push(coreSample);
+                    }
+                }
+            }
+        }
+
+        if (chosen.length === 0) {
+            return;
+        }
+
+        var total = 0;
+        var chosenSources = [];
+        for (var chosenIndex = 0; chosenIndex < chosen.length; ++chosenIndex) {
+            total += chosen[chosenIndex].value;
+            chosenSources.push(chosen[chosenIndex].source);
+        }
+        temperatureCelsius = total / chosen.length;
+        selectedTemperatureSources = chosenSources;
+        selectedTemperatureSource = chosen.length > 1
+                                    ? "Average of " + chosen.length + " CPU core sensors"
+                                    : chosen[0].source;
+        temperatureState = "available";
+
+        var selectionSignature = chosenSources.join("\n");
+        if (selectionSignature !== temperatureSelectionSignature) {
+            temperatureSelectionSignature = selectionSignature;
+            if (debugMetrics) {
+                if (chosen.length > 1) {
+                    console.log("TTop Desk metrics: selected CPU core temperature average: "
+                                + chosenSources.join(", "));
+                } else {
+                    console.log("TTop Desk metrics: selected temperature source: "
+                                + chosen[0].source + " ("
+                                + chosen[0].descriptor.category + ", priority "
+                                + chosen[0].descriptor.priority + ")");
+                }
+                console.log("TTop Desk metrics: normalized temperature sample: "
+                            + temperatureCelsius.toFixed(1) + " °C");
+            }
+        }
+    }
+
+    function rememberTemperatureSample(sourceName, payload) {
+        if (temperatureCandidateSources.indexOf(sourceName) === -1) {
+            return;
+        }
+
+        var descriptor = temperatureDescriptor(sourceName, payload, false);
+        if (descriptor.rejected) {
+            logTemperatureRejection(sourceName, descriptor.reason);
+            return;
+        }
+        var celsius = normalizeTemperatureCelsius(payload, sourceName);
+        if (!isFinite(celsius)) {
+            logTemperatureSampleRejection(
+                        sourceName,
+                        "invalid, unsupported, implausible, or zero-without-range value");
+            return;
+        }
+
+        var samples = temperatureSamples;
+        samples[sourceName] = {
+            "source": sourceName,
+            "value": celsius,
+            "descriptor": descriptor
+        };
+        temperatureSamples = samples;
+        temperatureDescriptors[sourceName] = descriptor;
+        selectTemperatureSources();
+    }
+
+    function handleTemperatureSourceLoss(sourceName) {
+        if (selectedTemperatureSources.indexOf(sourceName) === -1) {
+            return;
+        }
+
+        var samples = temperatureSamples;
+        delete samples[sourceName];
+        temperatureSamples = samples;
+        selectedTemperatureSources = [];
+        selectedTemperatureSource = "";
+        temperatureSelectionSignature = "__rediscovering__";
+        temperatureState = "loading";
+        if (debugMetrics) {
+            console.log("TTop Desk metrics: temperature source lost: "
+                        + sourceName + "; scheduling re-discovery");
+        }
+        selectTemperatureSources();
+        temperatureDiscoveryTimer.restart();
+        temperatureDeadlineTimer.restart();
     }
 
     function ignoredInterfaceReason(interfaceName) {
@@ -898,14 +1265,21 @@ Item {
             tryMemoryPercentSources();
         }
         rememberNetworkSample(sourceName, payload);
+        rememberTemperatureSample(sourceName, payload);
     }
 
-    function handleNativeSensor(sourceName, value, maximum) {
+    function handleNativeSensor(sourceName, value, maximum, name, shortName, description) {
         // Plasma 5.19+ ships Sensor as the native ksystemstats interface. It
         // is a fallback for distributions whose legacy DataEngine no longer
         // has a ksysguardd backend. DataSource candidates remain preferred by
         // the ordered selection above whenever they return data.
-        handleData(sourceName, { "value": value, "maximum": maximum });
+        handleData(sourceName, {
+            "value": value,
+            "maximum": maximum,
+            "name": name,
+            "shortName": shortName,
+            "description": description
+        });
     }
 
     PlasmaCore.DataSource {
@@ -919,16 +1293,29 @@ Item {
         onSourceAdded: {
             sourceLogTimer.restart();
             networkDiscoveryTimer.restart();
+            temperatureDiscoveryTimer.restart();
         }
-        onSourceRemoved: provider.handleNetworkSourceLoss(source)
+        onSourceRemoved: {
+            provider.handleNetworkSourceLoss(source);
+            provider.handleTemperatureSourceLoss(source);
+        }
     }
 
     Sensors.SensorTreeModel {
         id: sensorTree
 
-        onRowsInserted: networkDiscoveryTimer.restart()
-        onRowsRemoved: networkDiscoveryTimer.restart()
-        onModelReset: networkDiscoveryTimer.restart()
+        onRowsRemoved: {
+            networkDiscoveryTimer.restart();
+            temperatureDiscoveryTimer.restart();
+        }
+        onModelReset: {
+            networkDiscoveryTimer.restart();
+            temperatureDiscoveryTimer.restart();
+        }
+        onRowsInserted: {
+            networkDiscoveryTimer.restart();
+            temperatureDiscoveryTimer.restart();
+        }
     }
 
     Instantiator {
@@ -941,8 +1328,9 @@ Item {
             updateRateLimit: 1000
 
             function publishValue() {
-                if (name !== "" && isFinite(Number(value))) {
-                    provider.handleNativeSensor(sensorId, value, maximum);
+                if (name !== "" && value !== null && value !== undefined && value !== "") {
+                    provider.handleNativeSensor(sensorId, value, maximum,
+                                                name, shortName, description);
                 }
             }
 
@@ -951,6 +1339,7 @@ Item {
             onStatusChanged: {
                 if (status === Sensors.Sensor.Error || status === Sensors.Sensor.Removed) {
                     provider.handleNetworkSourceLoss(sensorId);
+                    provider.handleTemperatureSourceLoss(sensorId);
                 }
             }
         }
@@ -1048,5 +1437,40 @@ Item {
         repeat: true
         running: provider.selectedNetworkPairs.length > 0
         onTriggered: provider.settleUnchangedNetworkCounters()
+    }
+
+    Timer {
+        id: temperatureDiscoveryTimer
+
+        interval: 750
+        repeat: false
+        running: true
+        onTriggered: provider.discoverTemperatureSources()
+    }
+
+    Timer {
+        interval: 2000
+        repeat: true
+        running: provider.temperatureState !== "available"
+        onTriggered: provider.discoverTemperatureSources()
+    }
+
+    Timer {
+        id: temperatureDeadlineTimer
+
+        interval: 8000
+        repeat: false
+        running: true
+        onTriggered: {
+            if (!provider.temperatureAvailable) {
+                provider.temperatureState = "unavailable";
+                provider.temperatureCelsius = 0;
+                provider.selectedTemperatureSource = "";
+                provider.selectedTemperatureSources = [];
+                if (provider.debugMetrics) {
+                    console.log("TTop Desk metrics: no compatible CPU temperature source returned valid data");
+                }
+            }
+        }
     }
 }
