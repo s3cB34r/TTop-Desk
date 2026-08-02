@@ -60,9 +60,9 @@ Item {
             id: card
 
             Layout.minimumWidth: PlasmaCore.Units.gridUnit * 12
-            Layout.minimumHeight: PlasmaCore.Units.gridUnit * 11
+            Layout.minimumHeight: PlasmaCore.Units.gridUnit * 15
             Layout.preferredWidth: PlasmaCore.Units.gridUnit * 17
-            Layout.preferredHeight: PlasmaCore.Units.gridUnit * 14
+            Layout.preferredHeight: PlasmaCore.Units.gridUnit * 21
             implicitWidth: Layout.preferredWidth
             implicitHeight: Layout.preferredHeight
 
@@ -134,6 +134,37 @@ Item {
                     rxText: metrics.networkRxDisplayText
                     txText: metrics.networkTxDisplayText
                     availabilityState: metrics.networkState
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: PlasmaCore.Units.smallSpacing
+
+                    PlasmaComponents.Label {
+                        Layout.fillWidth: true
+                        text: "FILESYSTEMS"
+                        color: "#f5f5f5"
+                        font.bold: true
+                    }
+
+                    PlasmaComponents.Label {
+                        visible: !metrics.filesystemAvailable
+                        text: metrics.filesystemState === "unavailable"
+                              ? "Unavailable" : "Detecting…"
+                        color: "#b8bcc2"
+                        font.family: "monospace"
+                    }
+                }
+
+                Repeater {
+                    model: metrics.filesystemEntries
+
+                    delegate: Components.FilesystemRow {
+                        Layout.fillWidth: true
+                        mountPath: model.mountPath
+                        capacityText: model.displayText
+                        percent: model.percent
+                    }
                 }
 
                 Item {

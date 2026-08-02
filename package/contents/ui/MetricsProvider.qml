@@ -63,6 +63,23 @@ Item {
                                                          : temperatureCelsius < 70 ? "normal"
                                                          : temperatureCelsius < 85 ? "warm" : "hot"
 
+    readonly property bool filesystemAvailable: filesystemState === "available"
+    property string filesystemState: "loading"
+    property alias filesystemEntries: filesystemModel
+    readonly property bool rootFilesystemAvailable: rootFilesystemTotalBytes > 0
+    property real rootFilesystemPercent: 0
+    property real rootFilesystemUsedBytes: 0
+    property real rootFilesystemTotalBytes: 0
+    readonly property string rootFilesystemDisplayText: rootFilesystemAvailable
+                                                             ? formatCapacity(rootFilesystemUsedBytes)
+                                                               + " / " + formatCapacity(rootFilesystemTotalBytes)
+                                                               + "  ·  " + rootFilesystemPercent.toFixed(1) + "%"
+                                                             : ""
+
+    ListModel {
+        id: filesystemModel
+    }
+
     readonly property var cpuCandidates: [
         { "name": "cpu/system/TotalLoad", "scale": 1 },
         { "name": "cpu/all/usage", "scale": 1 },
@@ -128,6 +145,19 @@ Item {
     property var temperatureDiscoveryLogs: ({})
     property var temperatureRejectionLogs: ({})
     property var temperatureSampleLogs: ({})
+
+    property var filesystemCandidateSources: []
+    property var filesystemDescriptors: ({})
+    property var filesystemSamples: ({})
+    property var activeFilesystemSources: []
+    property string filesystemDiscoverySignature: "__uninitialized__"
+    property string filesystemCandidateSignature: "__uninitialized__"
+    property string filesystemSelectionSignature: "__uninitialized__"
+    property string filesystemModelSignature: "__uninitialized__"
+    property var filesystemDiscoveryLogs: ({})
+    property var filesystemRejectionLogs: ({})
+    property var filesystemSampleTimes: ({})
+    readonly property int filesystemRefreshInterval: 10000
 
     property var receivedData: ({})
     property var rejectionLog: ({})
@@ -257,6 +287,21 @@ Item {
         return (bytes / mebibyte).toFixed(1) + " MiB";
     }
 
+    function formatCapacity(bytes) {
+        if (!isFinite(bytes) || bytes < 0) {
+            return "Unavailable";
+        }
+
+        var units = ["B", "KiB", "MiB", "GiB", "TiB"];
+        var value = bytes;
+        var unitIndex = 0;
+        while (value >= 1024 && unitIndex < units.length - 1) {
+            value /= 1024;
+            ++unitIndex;
+        }
+        return value.toFixed(1) + " " + units[unitIndex];
+    }
+
     function formatByteRate(bytesPerSecond) {
         if (!isFinite(bytesPerSecond) || bytesPerSecond < 0) {
             return "Unavailable";
@@ -299,6 +344,9 @@ Item {
         for (index = 0; index < temperatureCandidateSources.length; ++index) {
             pushUnique(names, temperatureCandidateSources[index]);
         }
+        for (index = 0; index < filesystemCandidateSources.length; ++index) {
+            pushUnique(names, filesystemCandidateSources[index]);
+        }
         return names;
     }
 
@@ -322,6 +370,574 @@ Item {
         }
         collectSensorTreeSources(null, true, sources);
         return sources;
+    }
+
+    function filesystemRole(sourceName) {
+        var leaf = sourceName.substring(sourceName.lastIndexOf("/") + 1)
+                             .toLowerCase().replace(/[^a-z]/g, "");
+        if (leaf === "used" || leaf === "usedspace" || leaf === "usedbytes") {
+            return "used";
+        }
+        if (leaf === "free" || leaf === "available" || leaf === "avail"
+                || leaf === "freespace" || leaf === "availablebytes") {
+            return "available";
+        }
+        if (leaf === "total" || leaf === "size" || leaf === "capacity"
+                || leaf === "totalspace" || leaf === "totalbytes") {
+            return "total";
+        }
+        if (leaf === "usedpercent" || leaf === "usage" || leaf === "percentageused") {
+            return "percent";
+        }
+        if (leaf === "freepercent" || leaf === "availablepercent") {
+            return "freePercent";
+        }
+        if (leaf === "mount" || leaf === "mountpoint" || leaf === "mountpath"
+                || leaf === "path") {
+            return "mount";
+        }
+        if (leaf === "name" || leaf === "label" || leaf === "filesystemlabel") {
+            return "label";
+        }
+        if (leaf === "type" || leaf === "fstype" || leaf === "filesystemtype") {
+            return "type";
+        }
+        if (leaf === "device" || leaf === "devicename") {
+            return "device";
+        }
+        return "";
+    }
+
+    function filesystemDescriptor(sourceName) {
+        var lower = sourceName.toLowerCase();
+        if (sourceName.indexOf("\\") !== -1 || sourceName.indexOf("*") !== -1) {
+            return { "rejected": true, "reason": "template sensor identifier" };
+        }
+        if (lower.indexOf("disk/") !== 0
+                && lower.indexOf("filesystem/") !== 0
+                && lower.indexOf("filesystems/") !== 0
+                && lower.indexOf("storage/") !== 0) {
+            return { "rejected": true, "reason": "not a filesystem-capacity namespace" };
+        }
+
+        var role = filesystemRole(sourceName);
+        if (role === "") {
+            return { "rejected": true, "reason": "not a capacity or mount metadata sensor" };
+        }
+        var separator = sourceName.lastIndexOf("/");
+        var group = sourceName.substring(0, separator);
+        var groupTail = group.substring(group.indexOf("/") + 1);
+        return {
+            "rejected": false,
+            "source": sourceName,
+            "group": group,
+            "groupTail": groupTail,
+            "role": role,
+            "aggregate": groupTail.toLowerCase() === "all"
+        };
+    }
+
+    function isFilesystemSourceName(sourceName) {
+        return !filesystemDescriptor(sourceName).rejected;
+    }
+
+    function logFilesystemRejection(sourceName, reason) {
+        var key = sourceName + "|" + reason;
+        if (!debugMetrics || filesystemRejectionLogs[key]) {
+            return;
+        }
+        filesystemRejectionLogs[key] = true;
+        console.log("TTop Desk metrics: ignored filesystem source "
+                    + sourceName + " (" + reason + ")");
+    }
+
+    function discoverFilesystemSources() {
+        var allSources = allDiscoveredSources();
+        var discovered = [];
+        var candidates = [];
+        var descriptors = ({});
+        for (var index = 0; index < allSources.length; ++index) {
+            var sourceName = allSources[index];
+            var descriptor = filesystemDescriptor(sourceName);
+            if (descriptor.rejected) {
+                continue;
+            }
+            discovered.push(sourceName);
+            candidates.push(sourceName);
+            descriptors[sourceName] = descriptor;
+        }
+
+        discovered.sort();
+        candidates.sort();
+        var discoverySignature = discovered.join("\n");
+        if (discoverySignature !== filesystemDiscoverySignature) {
+            filesystemDiscoverySignature = discoverySignature;
+            if (debugMetrics && !filesystemDiscoveryLogs[discoverySignature]) {
+                filesystemDiscoveryLogs[discoverySignature] = true;
+                console.log("TTop Desk metrics: discovered filesystem candidates: "
+                            + (discovered.length > 0 ? discovered.join(", ") : "(none)"));
+            }
+        }
+
+        var candidateSignature = candidates.join("\n");
+        if (candidateSignature !== filesystemCandidateSignature) {
+            filesystemCandidateSignature = candidateSignature;
+            filesystemCandidateSources = candidates;
+            filesystemDescriptors = descriptors;
+        }
+        updateFilesystemEntries();
+    }
+
+    function filesystemPrimitiveText(payload) {
+        if (typeof payload === "string") {
+            return payload;
+        }
+        if (typeof payload !== "object" || payload === null) {
+            return "";
+        }
+        var keys = ["value", "Value", "data", "text"];
+        for (var index = 0; index < keys.length; ++index) {
+            var value = payload[keys[index]];
+            if (value !== undefined && value !== null && typeof value !== "object") {
+                return String(value);
+            }
+        }
+        return "";
+    }
+
+    function capacityFromPayload(payload) {
+        var value = extractNumber(payload);
+        var text = filesystemPrimitiveText(payload);
+        if (!isFinite(value)) {
+            var match = text.match(/[-+]?(?:\d+\.?\d*|\.\d+)/);
+            if (match === null) {
+                return NaN;
+            }
+            value = Number(match[0]);
+        }
+        if (!isFinite(value) || value < 0) {
+            return NaN;
+        }
+
+        var units = payloadText(payload, ["units", "unit"]);
+        if (units === "") {
+            var unitMatch = text.match(/\b(kib|mib|gib|tib|kb|mb|gb|tb|bytes?|b)\b/i);
+            units = unitMatch !== null ? unitMatch[1] : "";
+        }
+        units = units.toLowerCase();
+        var multiplier = 1;
+        if (units === "kib") {
+            multiplier = 1024;
+        } else if (units === "mib") {
+            multiplier = 1024 * 1024;
+        } else if (units === "gib") {
+            multiplier = 1024 * 1024 * 1024;
+        } else if (units === "tib") {
+            multiplier = 1024 * 1024 * 1024 * 1024;
+        } else if (units === "kb") {
+            multiplier = 1000;
+        } else if (units === "mb") {
+            multiplier = 1000 * 1000;
+        } else if (units === "gb") {
+            multiplier = 1000 * 1000 * 1000;
+        } else if (units === "tb") {
+            multiplier = 1000 * 1000 * 1000 * 1000;
+        }
+        var bytes = value * multiplier;
+        return isFinite(bytes) && bytes >= 0 ? bytes : NaN;
+    }
+
+    function rememberFilesystemSample(sourceName, payload) {
+        var descriptor = filesystemDescriptors[sourceName];
+        if (descriptor === undefined) {
+            return;
+        }
+
+        var now = Date.now();
+        var lastAccepted = filesystemSampleTimes[sourceName];
+        var isMetadata = descriptor.role === "mount" || descriptor.role === "label"
+                         || descriptor.role === "type" || descriptor.role === "device";
+
+        var sample = {
+            "source": sourceName,
+            "role": descriptor.role,
+            "group": descriptor.group,
+            "name": payloadText(payload, ["name"]),
+            "shortName": payloadText(payload, ["shortName"]),
+            "description": payloadText(payload, ["description"]),
+            "text": filesystemPrimitiveText(payload),
+            "number": NaN
+        };
+        if (descriptor.role === "percent" || descriptor.role === "freePercent") {
+            sample.number = normalizePercentage(payload, 1);
+        } else if (!isMetadata) {
+            sample.number = capacityFromPayload(payload);
+        }
+        if (!isMetadata && !isFinite(sample.number)) {
+            logFilesystemRejection(sourceName, "invalid or negative capacity value");
+            return;
+        }
+
+        var previous = filesystemSamples[sourceName];
+        var replacesInitialZero = previous !== undefined && previous.number === 0
+                                  && sample.number > 0;
+        if (!isMetadata && !replacesInitialZero && lastAccepted !== undefined
+                && now - lastAccepted < filesystemRefreshInterval - 250) {
+            return;
+        }
+
+        var samples = filesystemSamples;
+        samples[sourceName] = sample;
+        filesystemSamples = samples;
+        filesystemSampleTimes[sourceName] = now;
+        updateFilesystemEntries();
+    }
+
+    function decodedFilesystemGroupTail(tail) {
+        try {
+            return decodeURIComponent(tail);
+        } catch (error) {
+            return tail;
+        }
+    }
+
+    function filesystemGroupInfo(groupName, groupedSamples) {
+        var descriptorSource = groupedSamples[0].source;
+        var descriptor = filesystemDescriptors[descriptorSource];
+        var label = "";
+        var filesystemType = "";
+        var device = "";
+        var explicitMount = "";
+        var metadata = [];
+        var values = ({});
+        var sources = ({});
+
+        for (var index = 0; index < groupedSamples.length; ++index) {
+            var sample = groupedSamples[index];
+            values[sample.role] = sample.number;
+            sources[sample.role] = sample.source;
+            if (sample.role === "label" && sample.text !== "") {
+                label = sample.text;
+            } else if (sample.role === "type" && sample.text !== "") {
+                filesystemType = sample.text;
+            } else if (sample.role === "device" && sample.text !== "") {
+                device = sample.text;
+            } else if (sample.role === "mount" && sample.text.indexOf("/") === 0) {
+                explicitMount = sample.text;
+            }
+            metadata.push(sample.name, sample.shortName, sample.description);
+        }
+
+        var decodedTail = decodedFilesystemGroupTail(descriptor.groupTail);
+        var mountPath = explicitMount;
+        if (mountPath === "" && decodedTail.indexOf("/") === 0) {
+            mountPath = decodedTail;
+        }
+        if (mountPath === "") {
+            var metadataText = metadata.join(" ");
+            var mountMatch = metadataText.match(/(?:mounted\s+(?:at|on)|mount\s*point:?|filesystem)\s*(\/[^\s,)]*)/i);
+            if (mountMatch !== null) {
+                mountPath = mountMatch[1];
+            }
+        }
+
+        var normalizedLabel = label.toLowerCase().replace(/^\s+|\s+$/g, "");
+        if (mountPath === "" && (normalizedLabel === "/" || normalizedLabel === "root"
+                || normalizedLabel === "rootfs" || normalizedLabel === "system"
+                || normalizedLabel.indexOf("linux mint") !== -1
+                || normalizedLabel === "ubuntu")) {
+            mountPath = "/";
+        } else if (mountPath === "" && normalizedLabel === "home") {
+            mountPath = "/home";
+        } else if (mountPath === "" && normalizedLabel === "data") {
+            mountPath = "/data";
+        }
+
+        return {
+            "group": groupName,
+            "aggregate": descriptor.aggregate,
+            "mountPath": mountPath,
+            "label": label,
+            "filesystemType": filesystemType.toLowerCase(),
+            "device": device,
+            "values": values,
+            "sources": sources
+        };
+    }
+
+    function filesystemIgnoredReason(info) {
+        if (info.aggregate) {
+            return "aggregate disk entry; mount-specific entries are preferred";
+        }
+        var ignoredTypes = [
+            "proc", "sysfs", "tmpfs", "devtmpfs", "cgroup", "cgroup2",
+            "overlay", "squashfs", "debugfs", "tracefs", "securityfs",
+            "pstore", "efivarfs", "configfs", "fusectl", "mqueue",
+            "hugetlbfs", "binfmt_misc", "autofs"
+        ];
+        for (var typeIndex = 0; typeIndex < ignoredTypes.length; ++typeIndex) {
+            if (info.filesystemType === ignoredTypes[typeIndex]) {
+                return "virtual or transient filesystem type " + info.filesystemType;
+            }
+        }
+        var path = info.mountPath;
+        var ignoredPaths = ["/proc", "/sys", "/dev", "/run", "/snap"];
+        for (var pathIndex = 0; pathIndex < ignoredPaths.length; ++pathIndex) {
+            if (path === ignoredPaths[pathIndex]
+                    || path.indexOf(ignoredPaths[pathIndex] + "/") === 0) {
+                return "virtual or transient mount path " + path;
+            }
+        }
+        if (path === "") {
+            return "mount path could not be inferred safely";
+        }
+        return "";
+    }
+
+    function filesystemCompleteness(info) {
+        var values = info.values;
+        var score = 0;
+        if (isFinite(values.used)) {
+            score += 4;
+        }
+        if (isFinite(values.total)) {
+            score += 4;
+        }
+        if (isFinite(values.available)) {
+            score += 3;
+        }
+        if (isFinite(values.percent)) {
+            score += 2;
+        }
+        if (info.filesystemType !== "") {
+            ++score;
+        }
+        return score;
+    }
+
+    function normalizedFilesystemEntry(info) {
+        var total = info.values.total;
+        var used = info.values.used;
+        var available = info.values.available;
+        var percent = info.values.percent;
+        var chosenSources = ({});
+        var usedFromAvailable = isFinite(total) && isFinite(available)
+                                ? total - available : NaN;
+        var directUsedIsInitialZero = used === 0 && isFinite(usedFromAvailable)
+                                      && usedFromAvailable > 0;
+        if (isFinite(total)) {
+            chosenSources.total = info.sources.total;
+        }
+        if (!isFinite(percent) && isFinite(info.values.freePercent)) {
+            percent = 100 - info.values.freePercent;
+        }
+        if (isFinite(used) && !directUsedIsInitialZero) {
+            chosenSources.used = info.sources.used;
+        } else if (isFinite(usedFromAvailable)) {
+            used = usedFromAvailable;
+            chosenSources.available = info.sources.available;
+        }
+        if (isFinite(used) && isFinite(total) && total > 0) {
+            // Locally calculated usage keeps the text and progress bar
+            // consistent and takes precedence over a direct percentage.
+            percent = used / total * 100;
+        }
+        if (!isFinite(used) && isFinite(percent) && isFinite(total) && total > 0) {
+            used = total * clampPercent(percent) / 100;
+            if (isFinite(info.values.percent)) {
+                chosenSources.percent = info.sources.percent;
+            } else {
+                chosenSources.freePercent = info.sources.freePercent;
+            }
+        }
+        if (!isFinite(total) || total <= 0 || !isFinite(used) || used < 0
+                || used > total || !isFinite(percent)) {
+            return null;
+        }
+        percent = clampPercent(percent);
+        return {
+            "mountPath": info.mountPath,
+            "usedBytes": used,
+            "totalBytes": total,
+            "percent": percent,
+            "displayText": formatCapacity(used) + " / " + formatCapacity(total),
+            "group": info.group,
+            "filesystemType": info.filesystemType,
+            "sources": chosenSources,
+            "score": filesystemCompleteness(info)
+        };
+    }
+
+    function filesystemMountPriority(mountPath) {
+        if (mountPath === "/") {
+            return 0;
+        }
+        if (mountPath === "/home") {
+            return 1;
+        }
+        if (mountPath === "/data") {
+            return 2;
+        }
+        return 10;
+    }
+
+    function syncFilesystemModel(entries) {
+        var mountNames = [];
+        for (var index = 0; index < entries.length; ++index) {
+            mountNames.push(entries[index].mountPath);
+        }
+        var signature = mountNames.join("\n");
+        if (signature !== filesystemModelSignature) {
+            filesystemModelSignature = signature;
+            filesystemModel.clear();
+            for (index = 0; index < entries.length; ++index) {
+                filesystemModel.append(entries[index]);
+            }
+            return;
+        }
+        for (index = 0; index < entries.length; ++index) {
+            filesystemModel.setProperty(index, "usedBytes", entries[index].usedBytes);
+            filesystemModel.setProperty(index, "totalBytes", entries[index].totalBytes);
+            filesystemModel.setProperty(index, "percent", entries[index].percent);
+            filesystemModel.setProperty(index, "displayText", entries[index].displayText);
+        }
+    }
+
+    function updateFilesystemEntries() {
+        var grouped = ({});
+        var sampleNames = Object.keys(filesystemSamples);
+        for (var index = 0; index < sampleNames.length; ++index) {
+            var sample = filesystemSamples[sampleNames[index]];
+            if (filesystemDescriptors[sample.source] === undefined) {
+                continue;
+            }
+            if (grouped[sample.group] === undefined) {
+                grouped[sample.group] = [];
+            }
+            grouped[sample.group].push(sample);
+        }
+
+        var groups = Object.keys(grouped);
+        var byMount = ({});
+        for (index = 0; index < groups.length; ++index) {
+            var info = filesystemGroupInfo(groups[index], grouped[groups[index]]);
+            var ignoredReason = filesystemIgnoredReason(info);
+            if (ignoredReason !== "") {
+                logFilesystemRejection(info.group, ignoredReason);
+                continue;
+            }
+            var entry = normalizedFilesystemEntry(info);
+            if (entry === null) {
+                continue;
+            }
+            var existing = byMount[entry.mountPath];
+            if (existing === undefined || entry.score > existing.score
+                    || (entry.score === existing.score && entry.group < existing.group)) {
+                if (existing !== undefined) {
+                    logFilesystemRejection(existing.group,
+                                           "duplicate mount " + entry.mountPath
+                                           + "; more complete source group selected");
+                }
+                byMount[entry.mountPath] = entry;
+            } else {
+                logFilesystemRejection(entry.group,
+                                       "duplicate mount " + entry.mountPath
+                                       + "; existing source group is more complete");
+            }
+        }
+
+        var entries = [];
+        var mountPaths = Object.keys(byMount);
+        for (index = 0; index < mountPaths.length; ++index) {
+            entries.push(byMount[mountPaths[index]]);
+        }
+        entries.sort(function(left, right) {
+            var priorityDifference = filesystemMountPriority(left.mountPath)
+                                     - filesystemMountPriority(right.mountPath);
+            return priorityDifference !== 0 ? priorityDifference
+                                            : left.mountPath.localeCompare(right.mountPath);
+        });
+        if (entries.length > 3) {
+            entries = entries.slice(0, 3);
+        }
+
+        syncFilesystemModel(entries);
+        var activeSources = [];
+        for (index = 0; index < entries.length; ++index) {
+            var sourceRoles = Object.keys(entries[index].sources);
+            for (var roleIndex = 0; roleIndex < sourceRoles.length; ++roleIndex) {
+                pushUnique(activeSources, entries[index].sources[sourceRoles[roleIndex]]);
+            }
+        }
+        activeFilesystemSources = activeSources;
+
+        var rootEntry = byMount["/"];
+        if (rootEntry !== undefined) {
+            rootFilesystemUsedBytes = rootEntry.usedBytes;
+            rootFilesystemTotalBytes = rootEntry.totalBytes;
+            rootFilesystemPercent = rootEntry.percent;
+        } else {
+            rootFilesystemUsedBytes = 0;
+            rootFilesystemTotalBytes = 0;
+            rootFilesystemPercent = 0;
+        }
+
+        if (entries.length > 0) {
+            filesystemState = "available";
+        } else if (filesystemState === "available") {
+            filesystemState = "loading";
+        }
+
+        var selectionParts = [];
+        for (index = 0; index < entries.length; ++index) {
+            var signatureRoles = Object.keys(entries[index].sources);
+            signatureRoles.sort();
+            var signatureSources = [];
+            for (var signatureIndex = 0; signatureIndex < signatureRoles.length;
+                    ++signatureIndex) {
+                signatureSources.push(signatureRoles[signatureIndex] + "="
+                                      + entries[index].sources[signatureRoles[signatureIndex]]);
+            }
+            selectionParts.push(entries[index].mountPath + "=" + entries[index].group
+                                + "[" + signatureSources.join(",") + "]");
+        }
+        var selectionSignature = selectionParts.join("\n");
+        if (selectionSignature !== filesystemSelectionSignature) {
+            filesystemSelectionSignature = selectionSignature;
+            if (debugMetrics) {
+                console.log("TTop Desk metrics: selected filesystem mounts: "
+                            + (selectionParts.length > 0
+                               ? selectionParts.join(", ") : "(none)"));
+                for (index = 0; index < entries.length; ++index) {
+                    var selected = entries[index];
+                    console.log("TTop Desk metrics: filesystem " + selected.mountPath
+                                + " uses " + Object.keys(selected.sources).map(function(role) {
+                                    return role + "=" + selected.sources[role];
+                                }).join(", ") + " (type "
+                                + (selected.filesystemType !== ""
+                                   ? selected.filesystemType : "not exposed") + "; "
+                                + selected.displayText + ", "
+                                + selected.percent.toFixed(1) + "%)");
+                }
+            }
+        }
+    }
+
+    function handleFilesystemSourceLoss(sourceName) {
+        if (filesystemSamples[sourceName] === undefined
+                && activeFilesystemSources.indexOf(sourceName) === -1) {
+            return;
+        }
+        var samples = filesystemSamples;
+        delete samples[sourceName];
+        filesystemSamples = samples;
+        if (debugMetrics) {
+            console.log("TTop Desk metrics: filesystem source lost: "
+                        + sourceName + "; scheduling re-discovery");
+        }
+        updateFilesystemEntries();
+        filesystemDiscoveryTimer.restart();
+        filesystemDeadlineTimer.restart();
     }
 
     function temperatureNumber(payload) {
@@ -1266,6 +1882,7 @@ Item {
         }
         rememberNetworkSample(sourceName, payload);
         rememberTemperatureSample(sourceName, payload);
+        rememberFilesystemSample(sourceName, payload);
     }
 
     function handleNativeSensor(sourceName, value, maximum, name, shortName, description) {
@@ -1294,10 +1911,12 @@ Item {
             sourceLogTimer.restart();
             networkDiscoveryTimer.restart();
             temperatureDiscoveryTimer.restart();
+            filesystemDiscoveryTimer.restart();
         }
         onSourceRemoved: {
             provider.handleNetworkSourceLoss(source);
             provider.handleTemperatureSourceLoss(source);
+            provider.handleFilesystemSourceLoss(source);
         }
     }
 
@@ -1307,14 +1926,17 @@ Item {
         onRowsRemoved: {
             networkDiscoveryTimer.restart();
             temperatureDiscoveryTimer.restart();
+            filesystemDiscoveryTimer.restart();
         }
         onModelReset: {
             networkDiscoveryTimer.restart();
             temperatureDiscoveryTimer.restart();
+            filesystemDiscoveryTimer.restart();
         }
         onRowsInserted: {
             networkDiscoveryTimer.restart();
             temperatureDiscoveryTimer.restart();
+            filesystemDiscoveryTimer.restart();
         }
     }
 
@@ -1325,7 +1947,8 @@ Item {
             id: nativeSensor
 
             sensorId: modelData
-            updateRateLimit: 1000
+            updateRateLimit: provider.isFilesystemSourceName(sensorId)
+                             ? provider.filesystemRefreshInterval : 1000
 
             function publishValue() {
                 if (name !== "" && value !== null && value !== undefined && value !== "") {
@@ -1340,6 +1963,7 @@ Item {
                 if (status === Sensors.Sensor.Error || status === Sensors.Sensor.Removed) {
                     provider.handleNetworkSourceLoss(sensorId);
                     provider.handleTemperatureSourceLoss(sensorId);
+                    provider.handleFilesystemSourceLoss(sensorId);
                 }
             }
         }
@@ -1469,6 +2093,41 @@ Item {
                 provider.selectedTemperatureSources = [];
                 if (provider.debugMetrics) {
                     console.log("TTop Desk metrics: no compatible CPU temperature source returned valid data");
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: filesystemDiscoveryTimer
+
+        interval: 750
+        repeat: false
+        running: true
+        onTriggered: provider.discoverFilesystemSources()
+    }
+
+    Timer {
+        interval: 3000
+        repeat: true
+        running: provider.filesystemState !== "available"
+        onTriggered: provider.discoverFilesystemSources()
+    }
+
+    Timer {
+        id: filesystemDeadlineTimer
+
+        interval: 15000
+        repeat: false
+        running: true
+        onTriggered: {
+            if (!provider.filesystemAvailable) {
+                provider.filesystemState = "unavailable";
+                provider.rootFilesystemUsedBytes = 0;
+                provider.rootFilesystemTotalBytes = 0;
+                provider.rootFilesystemPercent = 0;
+                if (provider.debugMetrics) {
+                    console.log("TTop Desk metrics: no compatible filesystem source returned valid data");
                 }
             }
         }

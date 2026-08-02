@@ -4,10 +4,11 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.3 provides live total CPU utilization, physical memory usage,
-network receive/transmit throughput, and CPU temperature on KDE Plasma 5.27.
-The compact dark card refreshes approximately once per second. Memory is shown
-as a percentage and binary used/total sizes; network rates automatically use
+Milestone 1.4 provides live total CPU utilization, physical memory usage,
+network receive/transmit throughput, CPU temperature, and mounted-filesystem
+capacity on KDE Plasma 5.27. CPU, memory, network, and temperature refresh
+approximately once per second. Filesystem capacity refreshes approximately
+every 10 seconds. Memory and filesystems use binary sizes; network rates use
 B/s, KiB/s, MiB/s, or GiB/s; temperature is formatted in degrees Celsius.
 
 TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
@@ -15,8 +16,8 @@ TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
 DataEngine without its former backend. There is no Python backend or external
 runtime dependency.
 
-GPU and disk temperatures and process metrics remain future milestones, as
-does integration with a shared TTop Core backend.
+Disk I/O, SMART data, GPU metrics, disk temperatures, and process metrics
+remain future milestones, as does integration with a shared TTop Core backend.
 
 ## Prerequisites
 
@@ -50,9 +51,9 @@ plasmoidviewer -a "$(pwd)/package"
 
 Plasma 5 system-monitor sensor names can differ between releases and
 installations. TTop Desk checks several known CPU and physical-memory source
-names and discovers network interfaces and temperature sensors from the runtime
-sensor tree. Each metric displays `Unavailable` when no compatible source
-responds.
+names and discovers network interfaces, temperature sensors, and filesystem
+capacity sources from the runtime sensor tree. Each metric displays
+`Unavailable` when no compatible source responds.
 
 For network throughput, TTop Desk prefers complete per-interface receive and
 transmit rate pairs. It aggregates all eligible pairs, supporting simultaneous
@@ -81,12 +82,31 @@ lm-sensors data exposed to Plasma. Missing support is handled gracefully and
 does not affect CPU, memory, or network metrics. GPU and disk temperatures are
 intentionally excluded from this milestone.
 
+For filesystem capacity, TTop Desk discovers mount-specific `used`, `free` or
+`available`, `total`, and percentage sensors. It prefers calculating percentage
+from used and total bytes; total minus available is used when a direct used
+value is absent, and a direct percentage is the final fallback. Values are
+formatted in KiB, MiB, GiB, or TiB. Up to three unique mounts are displayed,
+ordered as `/`, `/home`, `/data`, then other meaningful persistent mounts.
+
+Mounts are deduplicated by normalized mount path. When several source groups
+describe the same mount, the group with the most complete used/total data wins.
+Aggregate disk entries are never mixed with mount-specific entries. Known
+virtual and transient filesystem types and paths—such as proc, sysfs, tmpfs,
+overlay, `/run`, and `/snap`—are ignored. Unknown entries are included only
+when Plasma exposes enough metadata to infer a meaningful mount path. Some
+Plasma 5 installations expose filesystem labels instead of paths; the provider
+maps explicit `root`, `home`, and `data` labels (plus common OS-volume labels)
+to their conventional mount paths rather than guessing arbitrary locations.
+
 To inspect discovery, temporarily set `debugMetrics` to `true` near the top of
 `package/contents/ui/main.qml`, then launch the widget. Startup logging includes
 advertised system-monitor sources, discovered network candidates, ignored
 interfaces and reasons, selected CPU and memory sources, selected network RX/TX
-pairs, temperature candidates and rejection reasons, the selected temperature
-category, and whether network values are direct rates or cumulative counters.
+pairs, temperature candidates and rejection reasons, filesystem candidates and
+ignored entries, selected mounts and their capacity sources, the selected
+temperature category, and whether network values are direct rates or cumulative
+counters.
 Return the property to `false` after troubleshooting to keep normal Plasma logs
 quiet.
 
@@ -104,6 +124,15 @@ ls /sys/class/hwmon
 ```
 
 These commands are not run by TTop Desk.
+
+For manual filesystem comparison and mount diagnostics, users may run:
+
+```bash
+findmnt
+df -hT
+```
+
+These commands are also never invoked by the widget.
 
 ## Install, upgrade, and uninstall
 
@@ -144,18 +173,23 @@ The shell scripts remain the quickest development path.
 
 `MetricsProvider.qml` isolates DataEngine discovery, network-interface
 selection and aggregation, temperature preference and core averaging,
-counter-to-rate conversion, the native Plasma 5 sensor fallback, defensive
-value parsing, normalization, and formatting from the presentation.
+filesystem discovery and deduplication, counter-to-rate conversion, the native
+Plasma 5 sensor fallback, defensive value parsing, normalization, and formatting
+from the presentation.
 `MetricRow.qml` provides percentage metric displays, `NetworkRow.qml` presents
 throughput without a fake progress scale, `TemperatureRow.qml` presents the
-selected thermal value, and `main.qml` only composes the card. This boundary
-leaves room for a later shared TTop Core adapter without coupling system data
-collection to the Plasma-specific visual components.
+selected thermal value, `FilesystemRow.qml` presents mount capacity with a real
+percentage scale, and `main.qml` only composes the card. This boundary leaves
+room for a later shared TTop Core adapter without coupling system data collection
+to the Plasma-specific visual components.
 
 Legacy `mem/physical/*` values without unit metadata are assumed to be KiB,
 matching Plasma 5's KSysGuard sensor convention. Explicit unit metadata always
 takes precedence. Bare percentage values are treated as 0–100 unless their
 payload metadata identifies a 0–1 ratio.
+Filesystem capacity values without explicit units are assumed to be bytes,
+matching Plasma 5's native disk sensors; recognized binary and decimal unit
+suffixes override that assumption.
 
 ## License
 

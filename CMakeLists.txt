@@ -3,7 +3,7 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(ttop-desk VERSION 0.1.3 LANGUAGES NONE)
+project(ttop-desk VERSION 0.1.4 LANGUAGES NONE)
 
 find_package(ECM 5.90 REQUIRED NO_MODULE)
 set(CMAKE_MODULE_PATH ${ECM_MODULE_PATH})
