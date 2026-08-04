@@ -16,6 +16,21 @@ Item {
 
     property bool debugMetrics: false
 
+    // Configuration-facing inputs. The effective values are clamped here as
+    // a second line of defence in case an older or hand-edited configuration
+    // contains unsafe values.
+    property int refreshIntervalMs: 1000
+    property int filesystemRefreshIntervalMs: 15000
+    property int maximumFilesystemEntries: 3
+    readonly property int effectiveRefreshIntervalMs:
+        Math.max(500, Math.min(5000, refreshIntervalMs > 0 ? refreshIntervalMs : 1000))
+    readonly property int effectiveFilesystemRefreshIntervalMs:
+        Math.max(5000, Math.min(60000, filesystemRefreshIntervalMs > 0
+                               ? filesystemRefreshIntervalMs : 15000))
+    readonly property int effectiveMaximumFilesystemEntries:
+        Math.max(1, Math.min(10, maximumFilesystemEntries > 0
+                            ? maximumFilesystemEntries : 3))
+
     readonly property bool cpuAvailable: cpuState === "available"
     property real cpuPercent: 0
     property string cpuState: "loading"
@@ -182,8 +197,6 @@ Item {
     property var filesystemDiscoveryLogs: ({})
     property var filesystemRejectionLogs: ({})
     property var filesystemSampleTimes: ({})
-    readonly property int filesystemRefreshInterval: 10000
-
     property var receivedData: ({})
     property var rejectionLog: ({})
     property var dataSourceLogSignatures: ({})
@@ -610,7 +623,7 @@ Item {
         var replacesInitialZero = previous !== undefined && previous.number === 0
                                   && sample.number > 0;
         if (!isMetadata && !replacesInitialZero && lastAccepted !== undefined
-                && now - lastAccepted < filesystemRefreshInterval - 250) {
+                && now - lastAccepted < effectiveFilesystemRefreshIntervalMs - 250) {
             return;
         }
 
@@ -885,8 +898,8 @@ Item {
             return priorityDifference !== 0 ? priorityDifference
                                             : left.mountPath.localeCompare(right.mountPath);
         });
-        if (entries.length > 3) {
-            entries = entries.slice(0, 3);
+        if (entries.length > effectiveMaximumFilesystemEntries) {
+            entries = entries.slice(0, effectiveMaximumFilesystemEntries);
         }
 
         syncFilesystemModel(entries);
@@ -2437,6 +2450,8 @@ Item {
         rememberFilesystemSample(sourceName, payload);
     }
 
+    onEffectiveMaximumFilesystemEntriesChanged: updateFilesystemEntries()
+
     function handleNativeSensor(sourceName, value, maximum, name, shortName, description) {
         // Plasma 5.19+ ships Sensor as the native ksystemstats interface. It
         // is a fallback for distributions whose legacy DataEngine no longer
@@ -2455,7 +2470,7 @@ Item {
         id: monitor
 
         engine: "systemmonitor"
-        interval: 1000
+        interval: provider.effectiveRefreshIntervalMs
         connectedSources: provider.allCandidateNames()
 
         onNewData: provider.handleData(sourceName, data)
@@ -2505,7 +2520,8 @@ Item {
 
             sensorId: modelData
             updateRateLimit: provider.isFilesystemSourceName(sensorId)
-                             ? provider.filesystemRefreshInterval : 1000
+                             ? provider.effectiveFilesystemRefreshIntervalMs
+                             : provider.effectiveRefreshIntervalMs
 
             function publishValue() {
                 if (name !== "" && value !== null && value !== undefined && value !== "") {
@@ -2615,7 +2631,7 @@ Item {
     }
 
     Timer {
-        interval: 1000
+        interval: provider.effectiveRefreshIntervalMs
         repeat: true
         running: provider.selectedNetworkPairs.length > 0
         onTriggered: provider.settleUnchangedNetworkCounters()
@@ -2656,7 +2672,7 @@ Item {
     }
 
     Timer {
-        interval: 1000
+        interval: provider.effectiveRefreshIntervalMs
         repeat: true
         running: provider.selectedDiskPairs.length > 0
         onTriggered: provider.settleUnchangedDiskIoCounters()
@@ -2716,7 +2732,7 @@ Item {
     Timer {
         id: filesystemDeadlineTimer
 
-        interval: 15000
+        interval: Math.max(15000, provider.effectiveFilesystemRefreshIntervalMs + 3000)
         repeat: false
         running: true
         onTriggered: {

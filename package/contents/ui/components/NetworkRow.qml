@@ -13,6 +13,7 @@ ColumnLayout {
 
     property string rxText: ""
     property string txText: ""
+    property bool showIcon: true
     // Supported states: "loading", "available", and "unavailable".
     property string availabilityState: "loading"
 
@@ -24,22 +25,12 @@ ColumnLayout {
 
     spacing: 0
 
-    RowLayout {
+    SectionHeader {
         Layout.fillWidth: true
-
-        PlasmaComponents.Label {
-            Layout.fillWidth: true
-            text: "NETWORK"
-            color: "#f5f5f5"
-            font.bold: true
-        }
-
-        PlasmaComponents.Label {
-            visible: !row.available
-            text: row.statusText
-            color: "#b8bcc2"
-            font.family: "monospace"
-        }
+        title: qsTr("NETWORK")
+        iconName: "network-wired"
+        showIcon: row.showIcon
+        statusText: row.available ? "" : row.statusText
     }
 
     RowLayout {

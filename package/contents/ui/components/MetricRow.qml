@@ -12,6 +12,8 @@ ColumnLayout {
     id: row
 
     property string metricLabel: ""
+    property string iconName: ""
+    property bool showIcon: true
     property string valueText: ""
     property real progressValue: 0
     // Supported states: "loading", "available", and "unavailable".
@@ -30,16 +32,25 @@ ColumnLayout {
         Layout.fillWidth: true
         spacing: PlasmaCore.Units.smallSpacing
 
+        PlasmaCore.IconItem {
+            visible: row.showIcon && row.iconName !== ""
+            source: row.iconName
+            Layout.preferredWidth: PlasmaCore.Units.iconSizes.small
+            Layout.preferredHeight: width
+        }
+
         PlasmaComponents.Label {
             Layout.fillWidth: true
             text: row.metricLabel
-            color: "#f5f5f5"
+            color: PlasmaCore.Theme.textColor
+            font.bold: true
         }
 
         PlasmaComponents.Label {
             Layout.maximumWidth: row.width * 0.78
             text: row.displayedValue
-            color: row.available ? PlasmaCore.Theme.highlightColor : "#b8bcc2"
+            color: row.available ? PlasmaCore.Theme.highlightColor
+                                 : PlasmaCore.Theme.disabledTextColor
             elide: Text.ElideLeft
             horizontalAlignment: Text.AlignRight
             font.family: "monospace"

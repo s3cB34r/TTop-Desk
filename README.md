@@ -4,12 +4,17 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.5 provides live total CPU utilization, physical memory usage,
-network receive/transmit throughput, CPU temperature, filesystem capacity, and
-disk read/write throughput on KDE Plasma 5.27. CPU, memory, network,
-temperature, and disk I/O refresh approximately once per second. Filesystem
-capacity refreshes approximately every 10 seconds. Memory and filesystems use
-binary sizes; network and disk rates use B/s, KiB/s, MiB/s, or GiB/s;
+Milestone 1.6 is complete. It provides separate compact and full
+representations, persistent Plasma settings, per-section visibility controls,
+safe refresh interval controls, theme-aware styling, and a configurable
+filesystem row limit. All live metrics from Milestone 1.5 remain available:
+total CPU utilization, physical memory usage, network receive/transmit
+throughput, CPU temperature, filesystem capacity, and disk read/write
+throughput on KDE Plasma 5.27.
+
+By default, CPU, memory, network, temperature, and disk I/O refresh once per
+second. Filesystem capacity refreshes every 15 seconds. Memory and filesystems
+use binary sizes; network and disk rates use B/s, KiB/s, MiB/s, or GiB/s;
 temperature is formatted in degrees Celsius.
 
 TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
@@ -17,8 +22,8 @@ TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
 DataEngine without its former backend. There is no Python backend or external
 runtime dependency.
 
-SMART data, GPU metrics, disk temperatures, and process metrics remain future
-milestones, as does integration with a shared TTop Core backend.
+SMART data, GPU monitoring, disk temperatures, and process metrics remain
+future milestones, as does integration with a shared TTop Core backend.
 
 ## Prerequisites
 
@@ -33,6 +38,30 @@ For direct development and installation, the system needs:
 
 Package names can vary between distributions. This repository does not install
 or modify system packages.
+
+## Widget settings and representations
+
+Open the settings by right-clicking TTop Desk and choosing **Configure TTop
+Desk…**. Changes apply to the running widget and are stored by Plasma; no Plasma
+restart is required.
+
+The settings page can independently show or hide CPU, memory, network,
+temperature, filesystems, and disk I/O in the detailed view. It can also toggle
+the full-view header and metric icons. The normal refresh interval can be set
+to 500 ms, 1 second, 2 seconds, or 5 seconds. The filesystem interval accepts
+safe values from 5 to 60 seconds, and the maximum number of filesystem rows can
+be set from 1 to 10. **Show network and temperature details** adds those values
+to the compact representation when their sections are enabled.
+
+In a panel, the compact representation prioritizes CPU and RAM percentages.
+It lays values out in a row for horizontal panels and stacks them for vertical
+panels where practical. Filesystem rows and detailed disk I/O are deliberately
+omitted from this small view. Click the compact widget to open the full view.
+
+On the desktop, resize the widget beyond its compact threshold to use the full
+card. Its preferred height follows the enabled sections, so hidden sections do
+not leave large gaps. Filesystem rows are ordered by mount priority and bounded
+by the configured entry limit.
 
 ## Test locally
 
@@ -102,8 +131,9 @@ For filesystem capacity, TTop Desk discovers mount-specific `used`, `free` or
 `available`, `total`, and percentage sensors. It prefers calculating percentage
 from used and total bytes; total minus available is used when a direct used
 value is absent, and a direct percentage is the final fallback. Values are
-formatted in KiB, MiB, GiB, or TiB. Up to three unique mounts are displayed,
-ordered as `/`, `/home`, `/data`, then other meaningful persistent mounts.
+formatted in KiB, MiB, GiB, or TiB. Up to the configured number of unique
+mounts are displayed (three by default), ordered as `/`, `/home`, `/data`, then
+other meaningful persistent mounts.
 
 Mounts are deduplicated by normalized mount path. When several source groups
 describe the same mount, the group with the most complete used/total data wins.
@@ -199,7 +229,9 @@ The shell scripts remain the quickest development path.
 
 ## Architecture
 
-`MetricsProvider.qml` isolates DataEngine discovery, network-interface
+`main.qml` owns the single `MetricsProvider` instance, validates configuration
+values, and wires it into `CompactRepresentation.qml` and
+`FullRepresentation.qml`. `MetricsProvider.qml` isolates DataEngine discovery, network-interface
 selection and aggregation, temperature preference and core averaging,
 filesystem discovery and deduplication, physical-disk selection, disk-I/O
 aggregation, counter-to-rate conversion, the native Plasma 5 sensor fallback,
@@ -208,8 +240,9 @@ defensive value parsing, normalization, and formatting from the presentation.
 throughput without a fake progress scale, `TemperatureRow.qml` presents the
 selected thermal value, `FilesystemRow.qml` presents mount capacity with a real
 percentage scale, `DiskIoRow.qml` presents disk throughput without a fake
-percentage, and `main.qml` only composes the card. This boundary leaves room for
-a later shared TTop Core adapter without coupling system data collection to the
+percentage. `SectionHeader.qml` provides consistent theme-aware section titles,
+status text, and optional semantic icons. This boundary leaves room for a later
+shared TTop Core adapter without coupling system data collection to the
 Plasma-specific visual components.
 
 Legacy `mem/physical/*` values without unit metadata are assumed to be KiB,

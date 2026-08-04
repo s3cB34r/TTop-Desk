@@ -14,6 +14,7 @@ RowLayout {
     property string valueText: ""
     property string availabilityState: "loading"
     property string severity: "unknown"
+    property bool showIcon: true
 
     readonly property bool available: availabilityState === "available"
     readonly property string displayedValue: available
@@ -24,16 +25,24 @@ RowLayout {
 
     spacing: PlasmaCore.Units.smallSpacing
 
+    PlasmaCore.IconItem {
+        visible: row.showIcon
+        source: "temperature-normal"
+        Layout.preferredWidth: PlasmaCore.Units.iconSizes.small
+        Layout.preferredHeight: width
+    }
+
     PlasmaComponents.Label {
         Layout.fillWidth: true
-        text: "TEMPERATURE"
-        color: "#f5f5f5"
+        text: qsTr("TEMPERATURE")
+        color: PlasmaCore.Theme.textColor
         font.bold: true
     }
 
     PlasmaComponents.Label {
         text: row.displayedValue
-        color: row.available ? PlasmaCore.Theme.highlightColor : "#b8bcc2"
+        color: row.available ? PlasmaCore.Theme.highlightColor
+                             : PlasmaCore.Theme.disabledTextColor
         font.family: "monospace"
     }
 }

@@ -4,11 +4,8 @@
  */
 
 import QtQuick 2.15
-import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
-import org.kde.plasma.components 2.0 as PlasmaComponents
 import org.kde.plasma.plasmoid 2.0
-import "components" as Components
 
 Item {
     id: root
@@ -16,168 +13,81 @@ Item {
     // Set to true while developing to log system-monitor sensor discovery.
     property bool debugMetrics: false
 
-    Plasmoid.switchWidth: PlasmaCore.Units.gridUnit * 12
-    Plasmoid.switchHeight: PlasmaCore.Units.gridUnit * 9
+    readonly property bool showCpu: Plasmoid.configuration.showCpu
+    readonly property bool showMemory: Plasmoid.configuration.showMemory
+    readonly property bool showNetwork: Plasmoid.configuration.showNetwork
+    readonly property bool showTemperature: Plasmoid.configuration.showTemperature
+    readonly property bool showFilesystems: Plasmoid.configuration.showFilesystems
+    readonly property bool showDiskIo: Plasmoid.configuration.showDiskIo
+    readonly property bool showHeader: Plasmoid.configuration.showHeader
+    readonly property bool showMetricIcons: Plasmoid.configuration.showMetricIcons
+    readonly property bool compactModeDetails: Plasmoid.configuration.compactModeDetails
+
+    readonly property int safeRefreshIntervalMs:
+        validRefreshInterval(Plasmoid.configuration.refreshIntervalMs)
+    readonly property int safeFilesystemRefreshIntervalMs:
+        clampInteger(Plasmoid.configuration.filesystemRefreshIntervalMs, 5000, 60000, 15000)
+    readonly property int safeMaximumFilesystemEntries:
+        clampInteger(Plasmoid.configuration.maximumFilesystemEntries, 1, 10, 3)
+
+    function validRefreshInterval(value) {
+        var number = Number(value);
+        var supported = [500, 1000, 2000, 5000];
+        return supported.indexOf(number) !== -1 ? number : 1000;
+    }
+
+    function clampInteger(value, minimum, maximum, fallback) {
+        var number = Number(value);
+        if (!isFinite(number) || number <= 0) {
+            return fallback;
+        }
+        return Math.max(minimum, Math.min(maximum, Math.round(number)));
+    }
+
+    // Keep undersized desktop containers in the compact view until the full
+    // card has enough room for its default set of sections.
+    Plasmoid.switchWidth: PlasmaCore.Units.gridUnit * 14
+    Plasmoid.switchHeight: PlasmaCore.Units.gridUnit * 17
     Plasmoid.compactRepresentation: compactRepresentation
     Plasmoid.fullRepresentation: fullRepresentation
 
     MetricsProvider {
         id: metrics
+
         debugMetrics: root.debugMetrics
+        refreshIntervalMs: root.safeRefreshIntervalMs
+        filesystemRefreshIntervalMs: root.safeFilesystemRefreshIntervalMs
+        maximumFilesystemEntries: root.safeMaximumFilesystemEntries
     }
 
     Component {
         id: compactRepresentation
 
-        Item {
-            implicitWidth: PlasmaCore.Units.gridUnit * 7
-            implicitHeight: PlasmaCore.Units.gridUnit * 2
-
-            RowLayout {
-                anchors.fill: parent
-                anchors.margins: PlasmaCore.Units.smallSpacing
-                spacing: PlasmaCore.Units.smallSpacing
-
-                PlasmaCore.IconItem {
-                    source: "utilities-system-monitor"
-                    Layout.preferredWidth: PlasmaCore.Units.iconSizes.smallMedium
-                    Layout.preferredHeight: width
-                }
-
-                PlasmaComponents.Label {
-                    Layout.fillWidth: true
-                    text: "TTop Desk"
-                    elide: Text.ElideRight
-                }
-            }
+        CompactRepresentation {
+            metricsProvider: metrics
+            showCpu: root.showCpu
+            showMemory: root.showMemory
+            showNetwork: root.showNetwork
+            showTemperature: root.showTemperature
+            showMetricIcons: root.showMetricIcons
+            compactModeDetails: root.compactModeDetails
+            formFactor: Plasmoid.formFactor
         }
     }
 
     Component {
         id: fullRepresentation
 
-        Rectangle {
-            id: card
-
-            Layout.minimumWidth: PlasmaCore.Units.gridUnit * 12
-            Layout.minimumHeight: PlasmaCore.Units.gridUnit * 17
-            Layout.preferredWidth: PlasmaCore.Units.gridUnit * 17
-            Layout.preferredHeight: PlasmaCore.Units.gridUnit * 23
-            implicitWidth: Layout.preferredWidth
-            implicitHeight: Layout.preferredHeight
-
-            color: "#25282d"
-            radius: PlasmaCore.Units.smallSpacing
-            border.color: Qt.rgba(PlasmaCore.Theme.highlightColor.r,
-                                  PlasmaCore.Theme.highlightColor.g,
-                                  PlasmaCore.Theme.highlightColor.b, 0.45)
-            border.width: 1
-
-            ColumnLayout {
-                anchors.fill: parent
-                anchors.margins: PlasmaCore.Units.largeSpacing
-                spacing: PlasmaCore.Units.smallSpacing
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: PlasmaCore.Units.smallSpacing
-
-                    PlasmaCore.IconItem {
-                        source: "utilities-system-monitor"
-                        Layout.preferredWidth: PlasmaCore.Units.iconSizes.smallMedium
-                        Layout.preferredHeight: width
-                    }
-
-                    PlasmaComponents.Label {
-                        Layout.fillWidth: true
-                        text: "TTop Desk"
-                        color: "#f5f5f5"
-                        font.bold: true
-                        font.pointSize: PlasmaCore.Theme.defaultFont.pointSize + 2
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    color: PlasmaCore.Theme.highlightColor
-                    opacity: 0.45
-                }
-
-                Components.MetricRow {
-                    Layout.fillWidth: true
-                    metricLabel: "CPU"
-                    valueText: metrics.cpuAvailable
-                               ? metrics.cpuPercent.toFixed(1) + "%"
-                               : ""
-                    progressValue: metrics.cpuPercent
-                    availabilityState: metrics.cpuState
-                }
-
-                Components.MetricRow {
-                    Layout.fillWidth: true
-                    metricLabel: "RAM"
-                    valueText: metrics.memoryDisplayText
-                    progressValue: metrics.memoryPercent
-                    availabilityState: metrics.memoryState
-                }
-
-                Components.TemperatureRow {
-                    Layout.fillWidth: true
-                    valueText: metrics.temperatureDisplayText
-                    availabilityState: metrics.temperatureState
-                    severity: metrics.temperatureSeverity
-                }
-
-                Components.NetworkRow {
-                    Layout.fillWidth: true
-                    rxText: metrics.networkRxDisplayText
-                    txText: metrics.networkTxDisplayText
-                    availabilityState: metrics.networkState
-                }
-
-                Components.DiskIoRow {
-                    Layout.fillWidth: true
-                    readText: metrics.diskReadDisplayText
-                    writeText: metrics.diskWriteDisplayText
-                    availabilityState: metrics.diskIoState
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: PlasmaCore.Units.smallSpacing
-
-                    PlasmaComponents.Label {
-                        Layout.fillWidth: true
-                        text: "FILESYSTEMS"
-                        color: "#f5f5f5"
-                        font.bold: true
-                    }
-
-                    PlasmaComponents.Label {
-                        visible: !metrics.filesystemAvailable
-                        text: metrics.filesystemState === "unavailable"
-                              ? "Unavailable" : "Detecting…"
-                        color: "#b8bcc2"
-                        font.family: "monospace"
-                    }
-                }
-
-                Repeater {
-                    model: metrics.filesystemEntries
-
-                    delegate: Components.FilesystemRow {
-                        Layout.fillWidth: true
-                        mountPath: model.mountPath
-                        capacityText: model.displayText
-                        percent: model.percent
-                    }
-                }
-
-                Item {
-                    Layout.fillHeight: true
-                }
-            }
+        FullRepresentation {
+            metricsProvider: metrics
+            showCpu: root.showCpu
+            showMemory: root.showMemory
+            showNetwork: root.showNetwork
+            showTemperature: root.showTemperature
+            showFilesystems: root.showFilesystems
+            showDiskIo: root.showDiskIo
+            showHeader: root.showHeader
+            showMetricIcons: root.showMetricIcons
         }
     }
 }

@@ -24,14 +24,14 @@ ColumnLayout {
         PlasmaComponents.Label {
             Layout.fillWidth: true
             text: row.mountPath
-            color: "#f5f5f5"
+            color: PlasmaCore.Theme.textColor
             font.family: "monospace"
             elide: Text.ElideRight
         }
 
         PlasmaComponents.Label {
             text: row.capacityText
-            color: "#b8bcc2"
+            color: PlasmaCore.Theme.disabledTextColor
             font.family: "monospace"
         }
 
