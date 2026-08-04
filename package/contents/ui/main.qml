@@ -60,9 +60,9 @@ Item {
             id: card
 
             Layout.minimumWidth: PlasmaCore.Units.gridUnit * 12
-            Layout.minimumHeight: PlasmaCore.Units.gridUnit * 15
+            Layout.minimumHeight: PlasmaCore.Units.gridUnit * 17
             Layout.preferredWidth: PlasmaCore.Units.gridUnit * 17
-            Layout.preferredHeight: PlasmaCore.Units.gridUnit * 21
+            Layout.preferredHeight: PlasmaCore.Units.gridUnit * 23
             implicitWidth: Layout.preferredWidth
             implicitHeight: Layout.preferredHeight
 
@@ -134,6 +134,13 @@ Item {
                     rxText: metrics.networkRxDisplayText
                     txText: metrics.networkTxDisplayText
                     availabilityState: metrics.networkState
+                }
+
+                Components.DiskIoRow {
+                    Layout.fillWidth: true
+                    readText: metrics.diskReadDisplayText
+                    writeText: metrics.diskWriteDisplayText
+                    availabilityState: metrics.diskIoState
                 }
 
                 RowLayout {

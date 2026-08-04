@@ -51,6 +51,19 @@ Item {
                                                           : ""
     property var activeNetworkSources: []
 
+    readonly property bool diskIoAvailable: diskIoState === "available"
+    property real diskReadBytesPerSecond: 0
+    property real diskWriteBytesPerSecond: 0
+    property string diskIoState: "loading"
+    readonly property string diskReadDisplayText: diskIoAvailable
+                                                       ? formatByteRate(diskReadBytesPerSecond)
+                                                       : ""
+    readonly property string diskWriteDisplayText: diskIoAvailable
+                                                        ? formatByteRate(diskWriteBytesPerSecond)
+                                                        : ""
+    property var selectedDiskSources: []
+    property var selectedDiskDevices: []
+
     readonly property bool temperatureAvailable: temperatureState === "available"
     property real temperatureCelsius: 0
     readonly property string temperatureDisplayText: temperatureAvailable
@@ -134,6 +147,18 @@ Item {
     property bool networkSampleLogged: false
     property var networkDiscoveryLogs: ({})
     property var ignoredInterfaceLogs: ({})
+
+    property var diskIoCandidateSources: []
+    property var diskIoDescriptors: ({})
+    property var selectedDiskPairs: []
+    property var diskIoSamples: ({})
+    property var diskIoSizeSamples: ({})
+    property string diskIoSourceSignature: "__uninitialized__"
+    property string diskIoCandidateSignature: "__uninitialized__"
+    property string diskIoSelectionSignature: "__uninitialized__"
+    property bool diskIoSampleLogged: false
+    property var diskIoDiscoveryLogs: ({})
+    property var diskIoIgnoredLogs: ({})
 
     property var temperatureCandidateSources: []
     property var temperatureDescriptors: ({})
@@ -340,6 +365,9 @@ Item {
         }
         for (index = 0; index < networkCandidateSources.length; ++index) {
             pushUnique(names, networkCandidateSources[index]);
+        }
+        for (index = 0; index < diskIoCandidateSources.length; ++index) {
+            pushUnique(names, diskIoCandidateSources[index]);
         }
         for (index = 0; index < temperatureCandidateSources.length; ++index) {
             pushUnique(names, temperatureCandidateSources[index]);
@@ -1281,6 +1309,529 @@ Item {
         temperatureDeadlineTimer.restart();
     }
 
+    function diskIoDescriptor(sourceName) {
+        var parts = sourceName.split("/");
+        if (parts.length < 3 || parts[0].toLowerCase() !== "disk") {
+            return null;
+        }
+        if (sourceName.indexOf("\\") !== -1 || sourceName.indexOf("*") !== -1) {
+            return null;
+        }
+
+        var deviceName = parts[1];
+        var metric = parts[parts.length - 1].toLowerCase().replace(/[^a-z]/g, "");
+        if (parts.length === 4 && parts[2].toLowerCase() === "rate") {
+            if (metric === "rblk" || metric === "readblocks") {
+                return diskIoDescriptorResult(sourceName, deviceName, "read", "rate",
+                                              1024, "legacy-rate", 30, "");
+            }
+            if (metric === "wblk" || metric === "writeblocks") {
+                return diskIoDescriptorResult(sourceName, deviceName, "write", "rate",
+                                              1024, "legacy-rate", 30, "");
+            }
+            return null;
+        }
+        if (parts.length !== 3) {
+            return null;
+        }
+
+        var rateDefinitions = {
+            "read": { "direction": "read", "family": "modern-rate", "priority": 10 },
+            "write": { "direction": "write", "family": "modern-rate", "priority": 10 },
+            "readrate": { "direction": "read", "family": "named-rate", "priority": 15 },
+            "writerate": { "direction": "write", "family": "named-rate", "priority": 15 },
+            "readbytespersecond": { "direction": "read", "family": "named-rate", "priority": 15 },
+            "writebytespersecond": { "direction": "write", "family": "named-rate", "priority": 15 },
+            "readbytesrate": { "direction": "read", "family": "named-rate", "priority": 15 },
+            "writebytesrate": { "direction": "write", "family": "named-rate", "priority": 15 }
+        };
+        var rateDefinition = rateDefinitions[metric];
+        if (rateDefinition !== undefined) {
+            return diskIoDescriptorResult(sourceName, deviceName,
+                                          rateDefinition.direction, "rate", 1,
+                                          rateDefinition.family,
+                                          rateDefinition.priority, "");
+        }
+
+        var counterDefinitions = {
+            "totalread": "read", "totalwrite": "write",
+            "totalreadbytes": "read", "totalwritebytes": "write",
+            "readbytes": "read", "writtenbytes": "write", "writebytes": "write"
+        };
+        if (counterDefinitions[metric] !== undefined) {
+            return diskIoDescriptorResult(sourceName, deviceName,
+                                          counterDefinitions[metric], "counter", 1,
+                                          "byte-counter", 40, "");
+        }
+
+        var unitCounters = {
+            "readsectors": { "direction": "read", "unitKind": "sector" },
+            "writesectors": { "direction": "write", "unitKind": "sector" },
+            "readblocks": { "direction": "read", "unitKind": "block" },
+            "writeblocks": { "direction": "write", "unitKind": "block" }
+        };
+        var unitCounter = unitCounters[metric];
+        if (unitCounter !== undefined) {
+            return diskIoDescriptorResult(sourceName, deviceName,
+                                          unitCounter.direction, "unitCounter", 1,
+                                          unitCounter.unitKind + "-counter", 50,
+                                          unitCounter.unitKind);
+        }
+        if (metric === "sectorsize" || metric === "logicalsectorsize") {
+            return diskIoDescriptorResult(sourceName, deviceName, "size", "metadata", 1,
+                                          "sector-size", 0, "sector");
+        }
+        if (metric === "blocksize" || metric === "logicalblocksize") {
+            return diskIoDescriptorResult(sourceName, deviceName, "size", "metadata", 1,
+                                          "block-size", 0, "block");
+        }
+        return null;
+    }
+
+    function diskIoDescriptorResult(sourceName, deviceName, direction, mode,
+                                    multiplier, family, priority, unitKind) {
+        var normalizedDevice = deviceName.toLowerCase();
+        return {
+            "source": sourceName,
+            "deviceName": deviceName,
+            "normalizedDevice": normalizedDevice,
+            "aggregate": normalizedDevice === "all" || normalizedDevice === "total"
+                         || normalizedDevice === "aggregate",
+            "direction": direction,
+            "mode": mode,
+            "multiplier": multiplier,
+            "family": family,
+            "priority": priority,
+            "unitKind": unitKind
+        };
+    }
+
+    function diskPartitionParent(deviceName) {
+        var name = deviceName.toLowerCase();
+        var match = name.match(/^(nvme\d+n\d+|mmcblk\d+|md\d+)p\d+$/);
+        if (match !== null) {
+            return match[1];
+        }
+        match = name.match(/^((?:sd|hd|vd|xvd)[a-z]+)\d+$/);
+        return match !== null ? match[1] : "";
+    }
+
+    function diskDeviceClass(deviceName) {
+        var name = deviceName.toLowerCase();
+        if (name === "all" || name === "total" || name === "aggregate") {
+            return "aggregate";
+        }
+        if (diskPartitionParent(name) !== "") {
+            return "partition";
+        }
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(name)) {
+            return "volume-identifier";
+        }
+        if (name.indexOf("dm-") === 0) {
+            return "device-mapper";
+        }
+        if (/^md\d+/.test(name)) {
+            return "raid";
+        }
+        if (/^(?:nvme\d+n\d+|mmcblk\d+|(?:sd|hd|vd|xvd)[a-z]+)$/.test(name)) {
+            return "whole-device";
+        }
+        return "unknown-device";
+    }
+
+    function ignoredDiskDeviceReason(deviceName) {
+        var name = deviceName.toLowerCase();
+        var ignoredPrefixes = ["loop", "ram", "zram", "sr", "fd"];
+        for (var index = 0; index < ignoredPrefixes.length; ++index) {
+            if (name.indexOf(ignoredPrefixes[index]) === 0) {
+                return "virtual or irrelevant device prefix " + ignoredPrefixes[index];
+            }
+        }
+        return "";
+    }
+
+    function logIgnoredDiskIo(key, reason) {
+        var signature = key + "|" + reason;
+        if (!debugMetrics || diskIoIgnoredLogs[signature]) {
+            return;
+        }
+        diskIoIgnoredLogs[signature] = true;
+        console.log("TTop Desk metrics: ignored disk I/O " + key + " (" + reason + ")");
+    }
+
+    function chooseDiskIoPairs(descriptors) {
+        var groups = ({});
+        var sizeSources = ({});
+        for (var sourceName in descriptors) {
+            var descriptor = descriptors[sourceName];
+            if (descriptor.direction === "size") {
+                sizeSources[descriptor.normalizedDevice + "|" + descriptor.unitKind] = descriptor;
+                continue;
+            }
+            var ignoredReason = descriptor.aggregate ? ""
+                                                      : ignoredDiskDeviceReason(descriptor.deviceName);
+            if (ignoredReason !== "") {
+                logIgnoredDiskIo(descriptor.deviceName, ignoredReason);
+                continue;
+            }
+            var key = descriptor.normalizedDevice + "|" + descriptor.family;
+            if (groups[key] === undefined) {
+                groups[key] = {
+                    "deviceName": descriptor.deviceName,
+                    "normalizedDevice": descriptor.normalizedDevice,
+                    "deviceClass": diskDeviceClass(descriptor.deviceName),
+                    "aggregate": descriptor.aggregate,
+                    "family": descriptor.family,
+                    "mode": descriptor.mode,
+                    "priority": descriptor.priority,
+                    "unitKind": descriptor.unitKind,
+                    "read": null,
+                    "write": null,
+                    "size": null
+                };
+            }
+            groups[key][descriptor.direction] = descriptor;
+        }
+
+        var completePairs = [];
+        for (var groupKey in groups) {
+            var group = groups[groupKey];
+            if (group.read === null || group.write === null) {
+                continue;
+            }
+            if (group.mode === "unitCounter") {
+                group.size = sizeSources[group.normalizedDevice + "|" + group.unitKind];
+                if (group.size === undefined) {
+                    logIgnoredDiskIo(group.deviceName + " " + group.family,
+                                     "no trustworthy " + group.unitKind + " size sensor");
+                    continue;
+                }
+            }
+            completePairs.push(group);
+        }
+        completePairs.sort(function(left, right) {
+            if (left.priority !== right.priority) {
+                return left.priority - right.priority;
+            }
+            return left.normalizedDevice.localeCompare(right.normalizedDevice);
+        });
+
+        var bestByDevice = ({});
+        var aggregates = [];
+        for (var index = 0; index < completePairs.length; ++index) {
+            var pair = completePairs[index];
+            if (pair.aggregate) {
+                aggregates.push(pair);
+            } else if (bestByDevice[pair.normalizedDevice] === undefined) {
+                bestByDevice[pair.normalizedDevice] = pair;
+            } else {
+                logIgnoredDiskIo(pair.deviceName + " " + pair.family,
+                                 "duplicate sensor family; higher-priority pair selected");
+            }
+        }
+
+        var wholeDevices = [];
+        var partitions = [];
+        var logicalDevices = [];
+        var deviceNames = Object.keys(bestByDevice);
+        for (index = 0; index < deviceNames.length; ++index) {
+            pair = bestByDevice[deviceNames[index]];
+            if (pair.deviceClass === "whole-device") {
+                wholeDevices.push(pair);
+            } else if (pair.deviceClass === "partition") {
+                partitions.push(pair);
+            } else {
+                logicalDevices.push(pair);
+            }
+        }
+
+        if (wholeDevices.length > 0) {
+            for (index = 0; index < partitions.length; ++index) {
+                var parent = diskPartitionParent(partitions[index].deviceName);
+                if (bestByDevice[parent] !== undefined) {
+                    logIgnoredDiskIo(partitions[index].deviceName,
+                                     "parent whole-device sensor " + parent + " is available");
+                }
+            }
+            for (index = 0; index < logicalDevices.length; ++index) {
+                logIgnoredDiskIo(logicalDevices[index].deviceName,
+                                 logicalDevices[index].deviceClass
+                                 + " may duplicate selected physical devices");
+            }
+            return wholeDevices;
+        }
+
+        if (aggregates.length > 0) {
+            for (index = 0; index < partitions.length; ++index) {
+                logIgnoredDiskIo(partitions[index].deviceName,
+                                 "reliable aggregate pair selected instead of partitions");
+            }
+            for (index = 0; index < logicalDevices.length; ++index) {
+                logIgnoredDiskIo(logicalDevices[index].deviceName,
+                                 "reliable aggregate pair selected instead of "
+                                 + logicalDevices[index].deviceClass + " alias");
+            }
+            return [aggregates[0]];
+        }
+
+        if (partitions.length > 0) {
+            return partitions;
+        }
+        if (logicalDevices.length > 0) {
+            // Without topology metadata, combining several mapper/RAID aliases
+            // could count the same operation twice. One complete pair is the
+            // conservative last fallback.
+            for (index = 1; index < logicalDevices.length; ++index) {
+                logIgnoredDiskIo(logicalDevices[index].deviceName,
+                                 "ambiguous logical-device duplication");
+            }
+            return [logicalDevices[0]];
+        }
+        return [];
+    }
+
+    function discoverDiskIoSources() {
+        var allSources = allDiscoveredSources();
+        var candidates = [];
+        var descriptors = ({});
+        for (var index = 0; index < allSources.length; ++index) {
+            var sourceName = allSources[index];
+            var descriptor = diskIoDescriptor(sourceName);
+            if (descriptor === null) {
+                continue;
+            }
+            candidates.push(sourceName);
+            descriptors[sourceName] = descriptor;
+        }
+        candidates.sort();
+        var sourceSignature = candidates.join("\n");
+        if (sourceSignature !== diskIoSourceSignature) {
+            diskIoSourceSignature = sourceSignature;
+            if (debugMetrics && !diskIoDiscoveryLogs[sourceSignature]) {
+                diskIoDiscoveryLogs[sourceSignature] = true;
+                console.log("TTop Desk metrics: discovered disk I/O candidates: "
+                            + (candidates.length > 0 ? candidates.join(", ") : "(none)"));
+                for (index = 0; index < candidates.length; ++index) {
+                    descriptor = descriptors[candidates[index]];
+                    console.log("TTop Desk metrics: disk I/O candidate "
+                                + descriptor.source + " device " + descriptor.deviceName
+                                + " class " + diskDeviceClass(descriptor.deviceName)
+                                + " mode " + descriptor.mode);
+                }
+            }
+        }
+
+        if (sourceSignature !== diskIoCandidateSignature) {
+            diskIoCandidateSignature = sourceSignature;
+            diskIoDescriptors = descriptors;
+            diskIoCandidateSources = candidates;
+        }
+
+        var newPairs = chooseDiskIoPairs(descriptors);
+        var selectionParts = [];
+        for (index = 0; index < newPairs.length; ++index) {
+            selectionParts.push(newPairs[index].read.source + "|"
+                                + newPairs[index].write.source + "|"
+                                + newPairs[index].mode);
+        }
+        var selectionSignature = selectionParts.join("\n");
+        if (selectionSignature !== diskIoSelectionSignature) {
+            diskIoSelectionSignature = selectionSignature;
+            selectedDiskPairs = newPairs;
+            var sources = [];
+            var devices = [];
+            for (index = 0; index < newPairs.length; ++index) {
+                var pair = newPairs[index];
+                sources.push(pair.read.source, pair.write.source);
+                if (pair.size !== null && pair.size !== undefined) {
+                    sources.push(pair.size.source);
+                }
+                devices.push(pair.aggregate ? "aggregate" : pair.deviceName);
+                if (debugMetrics) {
+                    console.log("TTop Desk metrics: selected disk I/O "
+                                + (pair.aggregate ? "aggregate" : "device " + pair.deviceName)
+                                + " sources: " + pair.read.source + ", " + pair.write.source
+                                + " (" + pair.mode + ")");
+                }
+            }
+            selectedDiskSources = sources;
+            selectedDiskDevices = devices;
+            diskIoSampleLogged = false;
+            if (debugMetrics) {
+                console.log("TTop Desk metrics: disk I/O selection strategy: "
+                            + (newPairs.length === 0 ? "none"
+                               : newPairs[0].aggregate ? "aggregate source"
+                               : "per-device aggregation") + "; devices: "
+                            + (devices.length > 0 ? devices.join(", ") : "(none)"));
+            }
+        }
+        if (selectedDiskPairs.length === 0 && diskIoState === "available") {
+            diskIoState = "loading";
+            diskReadBytesPerSecond = 0;
+            diskWriteBytesPerSecond = 0;
+        }
+        updateDiskIoAggregate();
+    }
+
+    function rememberDiskIoSample(sourceName, payload) {
+        var descriptor = diskIoDescriptors[sourceName];
+        if (descriptor === undefined) {
+            return;
+        }
+        if (descriptor.direction === "size") {
+            var size = capacityFromPayload(payload);
+            if (isFinite(size) && size >= 128 && size <= 1024 * 1024) {
+                var sizes = diskIoSizeSamples;
+                sizes[sourceName] = size;
+                diskIoSizeSamples = sizes;
+            } else {
+                logIgnoredDiskIo(sourceName, "invalid or implausible block/sector size");
+            }
+            return;
+        }
+
+        var now = Date.now();
+        var samples = diskIoSamples;
+        var previous = samples[sourceName];
+        var rawValue = NaN;
+        if (descriptor.mode === "rate") {
+            rawValue = normalizeByteRate(payload, descriptor.multiplier);
+            if (!isFinite(rawValue)) {
+                return;
+            }
+            samples[sourceName] = {
+                "ready": true, "rate": rawValue, "raw": rawValue, "timestamp": now
+            };
+        } else {
+            rawValue = descriptor.mode === "unitCounter"
+                       ? extractNumber(payload) : bytesFromPayload(payload, descriptor.multiplier);
+            var counterMultiplier = descriptor.multiplier;
+            if (descriptor.mode === "unitCounter") {
+                var pairSizeSource = null;
+                for (var pairIndex = 0; pairIndex < selectedDiskPairs.length; ++pairIndex) {
+                    var selectedPair = selectedDiskPairs[pairIndex];
+                    if (selectedPair.normalizedDevice === descriptor.normalizedDevice
+                            && selectedPair.family === descriptor.family) {
+                        pairSizeSource = selectedPair.size;
+                        break;
+                    }
+                }
+                if (pairSizeSource === null || pairSizeSource === undefined
+                        || !isFinite(diskIoSizeSamples[pairSizeSource.source])) {
+                    return;
+                }
+                counterMultiplier = diskIoSizeSamples[pairSizeSource.source];
+            }
+            if (!isFinite(rawValue) || rawValue < 0) {
+                return;
+            }
+            rawValue *= counterMultiplier;
+            if (!isFinite(rawValue)) {
+                return;
+            }
+            if (previous === undefined || !isFinite(previous.raw)) {
+                samples[sourceName] = {
+                    "ready": false, "rate": 0, "raw": rawValue, "timestamp": now
+                };
+            } else {
+                var elapsedMilliseconds = now - previous.timestamp;
+                var delta = rawValue - previous.raw;
+                var validDelta = delta >= 0 && elapsedMilliseconds >= 250
+                                 && elapsedMilliseconds <= 10000;
+                samples[sourceName] = {
+                    "ready": validDelta,
+                    "rate": validDelta ? delta * 1000 / elapsedMilliseconds : 0,
+                    "raw": rawValue,
+                    "timestamp": now
+                };
+            }
+        }
+        diskIoSamples = samples;
+        updateDiskIoAggregate();
+    }
+
+    function updateDiskIoAggregate() {
+        var readTotal = 0;
+        var writeTotal = 0;
+        var readyPairs = 0;
+        for (var index = 0; index < selectedDiskPairs.length; ++index) {
+            var pair = selectedDiskPairs[index];
+            var readSample = diskIoSamples[pair.read.source];
+            var writeSample = diskIoSamples[pair.write.source];
+            if (readSample === undefined || writeSample === undefined
+                    || !readSample.ready || !writeSample.ready
+                    || !isFinite(readSample.rate) || !isFinite(writeSample.rate)) {
+                continue;
+            }
+            readTotal += readSample.rate;
+            writeTotal += writeSample.rate;
+            ++readyPairs;
+        }
+        if (readyPairs > 0) {
+            diskReadBytesPerSecond = Math.max(0, readTotal);
+            diskWriteBytesPerSecond = Math.max(0, writeTotal);
+            diskIoState = "available";
+            if (debugMetrics && !diskIoSampleLogged) {
+                diskIoSampleLogged = true;
+                console.log("TTop Desk metrics: first aggregated disk I/O sample: read "
+                            + formatByteRate(diskReadBytesPerSecond) + ", write "
+                            + formatByteRate(diskWriteBytesPerSecond));
+            }
+        }
+    }
+
+    function settleUnchangedDiskIoCounters() {
+        var now = Date.now();
+        var samples = diskIoSamples;
+        var changed = false;
+        for (var index = 0; index < selectedDiskPairs.length; ++index) {
+            var pair = selectedDiskPairs[index];
+            if (pair.mode === "rate") {
+                continue;
+            }
+            var sourceNames = [pair.read.source, pair.write.source];
+            for (var sourceIndex = 0; sourceIndex < sourceNames.length; ++sourceIndex) {
+                var sourceName = sourceNames[sourceIndex];
+                var sample = samples[sourceName];
+                if (sample === undefined || now - sample.timestamp < 1500) {
+                    continue;
+                }
+                if (!sample.ready || sample.rate !== 0) {
+                    sample.ready = true;
+                    sample.rate = 0;
+                    samples[sourceName] = sample;
+                    changed = true;
+                }
+            }
+        }
+        if (changed) {
+            diskIoSamples = samples;
+            updateDiskIoAggregate();
+        }
+    }
+
+    function handleDiskIoSourceLoss(sourceName) {
+        if (selectedDiskSources.indexOf(sourceName) === -1) {
+            return;
+        }
+        var samples = diskIoSamples;
+        delete samples[sourceName];
+        diskIoSamples = samples;
+        var sizes = diskIoSizeSamples;
+        delete sizes[sourceName];
+        diskIoSizeSamples = sizes;
+        diskIoState = "loading";
+        diskReadBytesPerSecond = 0;
+        diskWriteBytesPerSecond = 0;
+        diskIoSampleLogged = false;
+        if (debugMetrics) {
+            console.log("TTop Desk metrics: disk I/O source lost: "
+                        + sourceName + "; scheduling re-discovery");
+        }
+        diskIoDiscoveryTimer.restart();
+        diskIoDeadlineTimer.restart();
+    }
+
     function ignoredInterfaceReason(interfaceName) {
         var name = interfaceName.toLowerCase();
         if (name === "lo" || name === "loopback") {
@@ -1881,6 +2432,7 @@ Item {
             tryMemoryPercentSources();
         }
         rememberNetworkSample(sourceName, payload);
+        rememberDiskIoSample(sourceName, payload);
         rememberTemperatureSample(sourceName, payload);
         rememberFilesystemSample(sourceName, payload);
     }
@@ -1910,11 +2462,13 @@ Item {
         onSourceAdded: {
             sourceLogTimer.restart();
             networkDiscoveryTimer.restart();
+            diskIoDiscoveryTimer.restart();
             temperatureDiscoveryTimer.restart();
             filesystemDiscoveryTimer.restart();
         }
         onSourceRemoved: {
             provider.handleNetworkSourceLoss(source);
+            provider.handleDiskIoSourceLoss(source);
             provider.handleTemperatureSourceLoss(source);
             provider.handleFilesystemSourceLoss(source);
         }
@@ -1925,16 +2479,19 @@ Item {
 
         onRowsRemoved: {
             networkDiscoveryTimer.restart();
+            diskIoDiscoveryTimer.restart();
             temperatureDiscoveryTimer.restart();
             filesystemDiscoveryTimer.restart();
         }
         onModelReset: {
             networkDiscoveryTimer.restart();
+            diskIoDiscoveryTimer.restart();
             temperatureDiscoveryTimer.restart();
             filesystemDiscoveryTimer.restart();
         }
         onRowsInserted: {
             networkDiscoveryTimer.restart();
+            diskIoDiscoveryTimer.restart();
             temperatureDiscoveryTimer.restart();
             filesystemDiscoveryTimer.restart();
         }
@@ -1962,6 +2519,7 @@ Item {
             onStatusChanged: {
                 if (status === Sensors.Sensor.Error || status === Sensors.Sensor.Removed) {
                     provider.handleNetworkSourceLoss(sensorId);
+                    provider.handleDiskIoSourceLoss(sensorId);
                     provider.handleTemperatureSourceLoss(sensorId);
                     provider.handleFilesystemSourceLoss(sensorId);
                 }
@@ -2061,6 +2619,47 @@ Item {
         repeat: true
         running: provider.selectedNetworkPairs.length > 0
         onTriggered: provider.settleUnchangedNetworkCounters()
+    }
+
+    Timer {
+        id: diskIoDiscoveryTimer
+
+        interval: 750
+        repeat: false
+        running: true
+        onTriggered: provider.discoverDiskIoSources()
+    }
+
+    Timer {
+        interval: 2000
+        repeat: true
+        running: provider.diskIoState !== "available"
+        onTriggered: provider.discoverDiskIoSources()
+    }
+
+    Timer {
+        id: diskIoDeadlineTimer
+
+        interval: 8000
+        repeat: false
+        running: true
+        onTriggered: {
+            if (!provider.diskIoAvailable) {
+                provider.diskIoState = "unavailable";
+                provider.diskReadBytesPerSecond = 0;
+                provider.diskWriteBytesPerSecond = 0;
+                if (provider.debugMetrics) {
+                    console.log("TTop Desk metrics: no compatible disk I/O source pair returned valid data");
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: provider.selectedDiskPairs.length > 0
+        onTriggered: provider.settleUnchangedDiskIoCounters()
     }
 
     Timer {

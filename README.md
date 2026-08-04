@@ -4,20 +4,21 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.4 provides live total CPU utilization, physical memory usage,
-network receive/transmit throughput, CPU temperature, and mounted-filesystem
-capacity on KDE Plasma 5.27. CPU, memory, network, and temperature refresh
-approximately once per second. Filesystem capacity refreshes approximately
-every 10 seconds. Memory and filesystems use binary sizes; network rates use
-B/s, KiB/s, MiB/s, or GiB/s; temperature is formatted in degrees Celsius.
+Milestone 1.5 provides live total CPU utilization, physical memory usage,
+network receive/transmit throughput, CPU temperature, filesystem capacity, and
+disk read/write throughput on KDE Plasma 5.27. CPU, memory, network,
+temperature, and disk I/O refresh approximately once per second. Filesystem
+capacity refreshes approximately every 10 seconds. Memory and filesystems use
+binary sizes; network and disk rates use B/s, KiB/s, MiB/s, or GiB/s;
+temperature is formatted in degrees Celsius.
 
 TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
 5's native `ksystemstats` sensor API when a distribution ships the legacy
 DataEngine without its former backend. There is no Python backend or external
 runtime dependency.
 
-Disk I/O, SMART data, GPU metrics, disk temperatures, and process metrics
-remain future milestones, as does integration with a shared TTop Core backend.
+SMART data, GPU metrics, disk temperatures, and process metrics remain future
+milestones, as does integration with a shared TTop Core backend.
 
 ## Prerequisites
 
@@ -68,6 +69,21 @@ Loopback and common virtual, bridge, and tunnel prefixes such as `docker`,
 unfamiliar virtual-interface handling is intentionally conservative: unknown
 interfaces are not rejected merely because their names are unfamiliar.
 
+For disk I/O, TTop Desk discovers complete read/write pairs and chooses one
+mutually exclusive strategy. Recognizable whole physical block devices are
+aggregated per device when available; otherwise a complete `disk/all` pair is
+preferred over partitions, device-mapper aliases, RAID aliases, or opaque
+volume identifiers. Aggregate and per-device values are never mixed. When a
+whole-device pair exists, corresponding partition pairs are ignored. Common
+virtual devices such as `loop`, `ram`, `zram`, optical `sr`, and floppy `fd`
+devices are filtered.
+
+Direct byte-rate sensors are preferred and cumulative byte counters are
+converted from consecutive samples. Sector or block counters are accepted only
+when Plasma exposes an explicit, plausible size sensor for the same device;
+ambiguous counters are rejected. Counter resets, stale intervals, negative
+deltas, and first samples are handled without manufacturing throughput values.
+
 For CPU temperature, TTop Desk selects one representation rather than mixing
 package and core sensors. Its preference order is: CPU package, AMD Tctl/Tdie,
 x86 package, CPU aggregate, average of distinct valid CPU cores, then a single
@@ -104,9 +120,10 @@ To inspect discovery, temporarily set `debugMetrics` to `true` near the top of
 advertised system-monitor sources, discovered network candidates, ignored
 interfaces and reasons, selected CPU and memory sources, selected network RX/TX
 pairs, temperature candidates and rejection reasons, filesystem candidates and
-ignored entries, selected mounts and their capacity sources, the selected
-temperature category, and whether network values are direct rates or cumulative
-counters.
+ignored entries, disk-I/O candidates and device classifications, duplicate
+filtering decisions, selected mounts and capacity sources, selected disk-I/O
+strategy and sources, the selected temperature category, and whether rate
+sources are direct values or cumulative counters.
 Return the property to `false` after troubleshooting to keep normal Plasma logs
 quiet.
 
@@ -133,6 +150,17 @@ df -hT
 ```
 
 These commands are also never invoked by the widget.
+
+For manual disk-I/O sensor comparison, users may run:
+
+```bash
+lsblk
+iostat
+cat /proc/diskstats
+```
+
+These commands are not invoked by TTop Desk. `iostat` may not be installed on
+every system and is not required by the widget.
 
 ## Install, upgrade, and uninstall
 
@@ -173,15 +201,16 @@ The shell scripts remain the quickest development path.
 
 `MetricsProvider.qml` isolates DataEngine discovery, network-interface
 selection and aggregation, temperature preference and core averaging,
-filesystem discovery and deduplication, counter-to-rate conversion, the native
-Plasma 5 sensor fallback, defensive value parsing, normalization, and formatting
-from the presentation.
+filesystem discovery and deduplication, physical-disk selection, disk-I/O
+aggregation, counter-to-rate conversion, the native Plasma 5 sensor fallback,
+defensive value parsing, normalization, and formatting from the presentation.
 `MetricRow.qml` provides percentage metric displays, `NetworkRow.qml` presents
 throughput without a fake progress scale, `TemperatureRow.qml` presents the
 selected thermal value, `FilesystemRow.qml` presents mount capacity with a real
-percentage scale, and `main.qml` only composes the card. This boundary leaves
-room for a later shared TTop Core adapter without coupling system data collection
-to the Plasma-specific visual components.
+percentage scale, `DiskIoRow.qml` presents disk throughput without a fake
+percentage, and `main.qml` only composes the card. This boundary leaves room for
+a later shared TTop Core adapter without coupling system data collection to the
+Plasma-specific visual components.
 
 Legacy `mem/physical/*` values without unit metadata are assumed to be KiB,
 matching Plasma 5's KSysGuard sensor convention. Explicit unit metadata always
@@ -190,6 +219,8 @@ payload metadata identifies a 0–1 ratio.
 Filesystem capacity values without explicit units are assumed to be bytes,
 matching Plasma 5's native disk sensors; recognized binary and decimal unit
 suffixes override that assumption.
+Modern `disk/*/read` and `disk/*/write` values without unit metadata are assumed
+to be direct bytes-per-second rates, matching Plasma 5's native disk plugin.
 
 ## License
 
