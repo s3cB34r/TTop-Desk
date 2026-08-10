@@ -14,7 +14,7 @@ from ttop_backend.protocol import (
 
 class ProtocolTests(unittest.TestCase):
     def test_parses_supported_command(self) -> None:
-        self.assertEqual(parse_request(b'{"command":"ping"}'), "ping")
+        self.assertEqual(parse_request(b'{"command":"ping"}').command, "ping")
 
     def test_ping_is_versioned(self) -> None:
         response = handle_request(b'{"command":"ping"}', lambda: {})
@@ -26,6 +26,49 @@ class ProtocolTests(unittest.TestCase):
             lambda: {"timestamp": 1.0, "processes": [], "gpu": None},
         )
         self.assertEqual(response["version"], PROTOCOL_VERSION)
+
+    def test_processes_uses_default_sort_and_limit(self) -> None:
+        received: list[tuple[str, int]] = []
+
+        def processes(sort_by: str, limit: int):
+            received.append((sort_by, limit))
+            return {"status": "ok", "processes": []}
+
+        response = handle_request(
+            b'{"command":"processes"}', lambda: {}, processes
+        )
+        self.assertEqual(received, [("cpu", 5)])
+        self.assertEqual(response["version"], PROTOCOL_VERSION)
+
+    def test_processes_accepts_explicit_and_maximum_limit(self) -> None:
+        request = parse_request(
+            b'{"command":"processes","sort":"memory","limit":20}'
+        )
+        self.assertEqual((request.sort, request.limit), ("memory", 20))
+
+    def test_processes_rejects_invalid_limits(self) -> None:
+        for value in (0, 21, -1, 5.0, True, "5", None):
+            raw = json.dumps({"command": "processes", "limit": value}).encode()
+            with self.subTest(value=value):
+                response = handle_request(raw, lambda: {}, lambda _sort, _limit: {})
+                self.assertEqual(response["error"], "invalid_limit")
+                self.assertEqual(response["version"], PROTOCOL_VERSION)
+
+    def test_processes_rejects_unsupported_sort(self) -> None:
+        response = handle_request(
+            b'{"command":"processes","sort":"pid"}',
+            lambda: {},
+            lambda _sort, _limit: {},
+        )
+        self.assertEqual(response["error"], "invalid_sort")
+
+    def test_processes_rejects_unknown_properties(self) -> None:
+        response = handle_request(
+            b'{"command":"processes","limit":5,"action":"kill"}',
+            lambda: {},
+            lambda _sort, _limit: {},
+        )
+        self.assertEqual(response["error"], "invalid_request")
 
     def test_malformed_json_is_safe(self) -> None:
         response = handle_request(b"{broken", lambda: {})
@@ -54,4 +97,3 @@ class ProtocolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import logging
 import os
 import signal
@@ -55,6 +56,18 @@ def remove_stale_socket(path: Path) -> None:
         raise RuntimeError("refusing to replace a non-socket path")
     if details.st_uid != os.getuid():
         raise RuntimeError("refusing to remove a socket owned by another user")
+
+    probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    probe.settimeout(0.25)
+    try:
+        probe.connect(str(path))
+    except OSError as error:
+        if error.errno not in {errno.ECONNREFUSED, errno.ENOENT}:
+            raise RuntimeError("refusing to replace a socket whose state is uncertain") from error
+    else:
+        raise RuntimeError("backend socket is already active")
+    finally:
+        probe.close()
     path.unlink()
 
 
@@ -117,8 +130,10 @@ class BackendServer:
                 command_for_log = "ping"
             elif b'"snapshot"' in request:
                 command_for_log = "snapshot"
+            elif b'"processes"' in request:
+                command_for_log = "processes"
         LOGGER.debug("Command received: %s", command_for_log)
-        response = handle_request(request, self.collector.snapshot)
+        response = handle_request(request, self.collector.snapshot, self.collector.processes)
         if response.get("error") == "internal_error":
             LOGGER.error("Snapshot request failed internally")
         if response.get("processes") is not None:

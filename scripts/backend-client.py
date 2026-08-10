@@ -20,8 +20,8 @@ def default_socket_path() -> Path:
     return Path.home() / ".cache" / "ttop-desk" / "ttop-desk.sock"
 
 
-def request(socket_path: Path, command: str) -> dict[str, Any]:
-    payload = json.dumps({"command": command}, separators=(",", ":")).encode("utf-8") + b"\n"
+def request_payload(socket_path: Path, payload_value: dict[str, Any]) -> dict[str, Any]:
+    payload = json.dumps(payload_value, separators=(",", ":")).encode("utf-8") + b"\n"
     response = bytearray()
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
         client.settimeout(5.0)
@@ -44,18 +44,40 @@ def request(socket_path: Path, command: str) -> dict[str, Any]:
     return decoded
 
 
+def request(socket_path: Path, command: str) -> dict[str, Any]:
+    return request_payload(socket_path, {"command": command})
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Query the local TTop Desk backend")
     parser.add_argument("--socket", metavar="PATH", help="override the Unix socket path")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--ping-only", action="store_true", help="request only backend status")
+    mode.add_argument(
+        "--processes", type=int, metavar="LIMIT", help="request a bounded process list"
+    )
+    parser.add_argument("--sort", choices=("cpu", "memory"), default="cpu")
     arguments = parser.parse_args()
     socket_path = Path(arguments.socket).expanduser() if arguments.socket else default_socket_path()
 
-    for command in ("ping", "snapshot"):
-        print(f"{command}:")
-        print(json.dumps(request(socket_path, command), indent=2, sort_keys=True))
+    if arguments.ping_only:
+        requests = [("ping", {"command": "ping"})]
+    elif arguments.processes is not None:
+        requests = [(
+            "processes",
+            {"command": "processes", "sort": arguments.sort, "limit": arguments.processes},
+        )]
+    else:
+        requests = [
+            ("ping", {"command": "ping"}),
+            ("snapshot", {"command": "snapshot"}),
+        ]
+
+    for label, payload in requests:
+        print(f"{label}:")
+        print(json.dumps(request_payload(socket_path, payload), indent=2, sort_keys=True))
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -80,6 +80,22 @@ def normalize_process(
     return entry
 
 
+def sort_process_entries(
+    entries: list[dict[str, Any]],
+    sort_by: str,
+) -> list[dict[str, Any]]:
+    """Return a deterministic metric-descending copy of normalized entries."""
+    metric = "cpuPercent" if sort_by == "cpu" else "memoryBytes"
+    return sorted(
+        entries,
+        key=lambda entry: (
+            -float(entry.get(metric, -1.0)),
+            str(entry.get("name", "")),
+            int(entry["pid"]),
+        ),
+    )
+
+
 class ProcessSampler:
     """Maintain bounded CPU delta state between snapshot requests."""
 
@@ -113,7 +129,7 @@ class ProcessSampler:
         value = _finite_nonnegative(info.get("create_time"))
         return value
 
-    def snapshot(self) -> list[dict[str, Any]]:
+    def snapshot(self, *, sort_by: str | None = None) -> list[dict[str, Any]]:
         sampled_at = self._clock()
         next_state: dict[int, CpuSample] = {}
         entries: list[dict[str, Any]] = []
@@ -149,12 +165,15 @@ class ProcessSampler:
                 entries.append(entry)
 
         self._previous = next_state
-        entries.sort(
-            key=lambda entry: (
-                -float(entry.get("cpuPercent", -1.0)),
-                -int(entry.get("memoryBytes", -1)),
-                int(entry["pid"]),
+        if sort_by is None:
+            # Preserve the original protocol-v1 snapshot ordering.
+            entries.sort(
+                key=lambda entry: (
+                    -float(entry.get("cpuPercent", -1.0)),
+                    -int(entry.get("memoryBytes", -1)),
+                    int(entry["pid"]),
+                )
             )
-        )
+        else:
+            entries = sort_process_entries(entries, sort_by)
         return entries[: self.limit]
-

@@ -7,6 +7,23 @@ import QtQuick 2.15
 import "../package/contents/ui" as Ui
 
 Item {
+    QtObject {
+        id: fakeSocketClient
+        property bool busy: false
+        property string socketPath: ""
+        property var requests: []
+        signal responseReceived(string jsonLine)
+        signal transportError(string errorCode)
+
+        function defaultSocketPath() {
+            return "/tmp/ttop-desk-probe.sock";
+        }
+
+        function request(payload) {
+            requests.push(payload);
+        }
+    }
+
     function fail(message) {
         console.error("TTop Desk backend provider probe: FAIL: " + message);
         Qt.exit(1);
@@ -14,8 +31,10 @@ Item {
 
     Ui.BackendProvider {
         id: provider
-        enabled: false
+        enabled: true
+        autoPoll: false
         maximumProcessEntries: 3
+        socketClient: fakeSocketClient
     }
 
     Timer {
@@ -23,6 +42,25 @@ Item {
         running: true
         repeat: false
         onTriggered: {
+            provider.requestProcesses();
+            var boundedRequest = JSON.parse(fakeSocketClient.requests.shift());
+            if (boundedRequest.command !== "processes"
+                    || boundedRequest.sort !== "cpu"
+                    || boundedRequest.limit !== 3) {
+                fail("bounded process request is incorrect");
+            }
+
+            provider.handleResponse(JSON.stringify({
+                "status": "error",
+                "version": 1,
+                "error": "unsupported_command"
+            }));
+            provider.requestProcesses();
+            var fallbackRequest = JSON.parse(fakeSocketClient.requests.shift());
+            if (fallbackRequest.command !== "snapshot") {
+                fail("legacy snapshot fallback was not selected");
+            }
+
             provider.handleResponse(JSON.stringify({
                 "version": 1,
                 "timestamp": 1720000000.0,
@@ -54,4 +92,3 @@ Item {
         }
     }
 }
-

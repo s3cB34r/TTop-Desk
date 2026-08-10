@@ -2,9 +2,10 @@
 
 This directory contains the minimal local backend foundation for metrics that
 KDE Plasma 5 cannot expose directly. Current CPU, RAM, network, temperature,
-filesystem, and disk-I/O metrics remain Plasma-native. Milestone 1.9 connects
+filesystem, and disk-I/O metrics remain Plasma-native. Milestone 1.9 connected
 the backend's process snapshot to the full widget through a persistent
-in-process Qt `QLocalSocket` bridge; the backend is still started manually.
+in-process Qt `QLocalSocket` bridge. Milestone 1.10 adds bounded process
+requests and an optional development `systemd --user` service.
 
 ## Architecture
 
@@ -25,7 +26,7 @@ The default socket is `$XDG_RUNTIME_DIR/ttop-desk.sock`. If
 `$HOME/.cache/ttop-desk/ttop-desk.sock`. `--socket PATH` overrides both.
 
 Requests and responses are one-line UTF-8 JSON documents. Protocol version 1
-supports only two exact commands:
+supports ping, backwards-compatible snapshots, and bounded process requests:
 
 ```json
 {"command":"ping"}
@@ -42,6 +43,19 @@ supports only two exact commands:
 ```json
 {"version":1,"timestamp":1720000000.0,"processes":[],"gpu":null}
 ```
+
+```json
+{"command":"processes","sort":"cpu","limit":5}
+```
+
+```json
+{"status":"ok","version":1,"timestamp":1720000000.0,"sort":"cpu","limit":5,"processes":[]}
+```
+
+`sort` defaults to `cpu` and accepts `cpu` or `memory`. `limit` defaults to 5
+and must be an integer from 1 through 20. Both modes sort descending by their
+metric, then deterministically by process name and PID. Invalid parameters
+return `invalid_sort` or `invalid_limit`; requests are never unbounded.
 
 Errors are structured, for example:
 
@@ -86,6 +100,29 @@ Stop a foreground backend with `Ctrl+C`. Send `SIGTERM` using the process
 manager that started it when testing managed shutdown. Normal SIGINT and
 SIGTERM shutdown remove the owned socket.
 
+## Optional systemd user service
+
+From the repository root, install and immediately start the development unit:
+
+```bash
+./scripts/install-backend-service.sh
+```
+
+The generated unit is installed at
+`~/.config/systemd/user/ttop-desk-backend.service`. It embeds the current
+repository path until final packaging exists. It has no `User=` directive,
+needs no `sudo`, restricts address families to `AF_UNIX`, uses `UMask=0077`,
+and restarts unexpected failures after two seconds with a bounded start limit.
+
+```bash
+./scripts/backend-status.sh
+systemctl --user stop ttop-desk-backend
+systemctl --user start ttop-desk-backend
+systemctl --user restart ttop-desk-backend
+journalctl --user -u ttop-desk-backend -f
+./scripts/uninstall-backend-service.sh
+```
+
 Run unit tests without a desktop session:
 
 ```bash
@@ -108,8 +145,9 @@ open files, or sockets. A newly observed PID has no `cpuPercent` until a second
 valid CPU-time sample is available. Subsequent values are CPU-time deltas over
 monotonic elapsed time and are not clamped to 100%.
 
-The widget requests the existing `{"command":"snapshot"}` response every two
-seconds by default, selects at most five CPU-ranked entries, and discards
-`username` before exposing its QML model. A stopped backend clears process rows
+The widget requests `{"command":"processes","sort":"cpu","limit":5}` every
+two seconds by default and discards `username` before exposing its QML model.
+It automatically falls back to `snapshot` when an older protocol-v1 backend
+rejects the newer command. A stopped backend clears process rows
 and changes only that section to `Backend unavailable`; reconnect attempts use
 a five-second backoff. No process action is supported.

@@ -4,7 +4,12 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.9 completes the first backend-to-widget path with a read-only
+Milestone 1.10 adds an optional `systemd --user` service for normal daily
+backend use and a bounded protocol-v1 process request. The widget now asks the
+backend for only its configured CPU-sorted rows and falls back to the original
+snapshot request when connected to a Milestone 1.8/1.9 backend.
+
+Milestone 1.9 completed the first backend-to-widget path with a read-only
 **TOP PROCESSES** section in the full representation. It shows up to five
 CPU-sorted processes with one-decimal CPU usage and resident memory, refreshes
 every two seconds by default, and becomes `Backend unavailable` without
@@ -39,8 +44,8 @@ TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
 DataEngine without its former backend. These current production metrics remain
 Plasma-native and do not depend on the optional local backend foundation.
 
-SMART data, GPU monitoring, disk temperatures, and visible process metrics
-remain future milestones, as does integration with a shared TTop Core backend.
+SMART data, GPU monitoring, disk temperatures, and process controls remain
+future milestones, as does integration with a shared TTop Core backend.
 
 ## Prerequisites
 
@@ -115,6 +120,33 @@ The widget does not start or manage the backend. If it is absent, starting, or
 stopped, only **TOP PROCESSES** changes state; every existing metric continues
 to use Plasma. Unavailable connections retry after five seconds rather than in
 a tight loop.
+
+### Optional backend user service
+
+The development installer generates a user unit containing the resolved
+repository and Python paths. It writes only
+`~/.config/systemd/user/ttop-desk-backend.service`, requires no `sudo`, and
+starts the backend only for the current user:
+
+```bash
+./scripts/install-backend-service.sh
+```
+
+Common lifecycle commands are:
+
+```bash
+./scripts/backend-status.sh
+systemctl --user stop ttop-desk-backend
+systemctl --user start ttop-desk-backend
+systemctl --user restart ttop-desk-backend
+journalctl --user -u ttop-desk-backend -f
+./scripts/uninstall-backend-service.sh
+```
+
+The service uses the same mode-`0600` Unix socket, opens no TCP port, runs
+without `User=` or elevated privileges, restarts after unexpected failure with
+a two-second delay, and shuts down cleanly on SIGTERM. Plasma-native metrics do
+not depend on the unit.
 
 ### Metric discovery debugging
 
@@ -321,9 +353,10 @@ data source; future advanced sensors can extend the versioned protocol without
 replacing working Plasma-native metrics. It communicates only through a
 restrictive per-user Unix-domain socket, opens no network ports, needs no
 elevated permissions. Milestone 1.9 connects it through a small in-process Qt
-5 `QLocalSocket` QML bridge. The bridge sends the existing protocol-v1
-`snapshot` request; it never launches Python or another process and never opens
-a TCP port. `BackendProvider.qml` validates, CPU-sorts, deterministically
+5 `QLocalSocket` QML bridge. The bridge sends the protocol-v1 bounded request
+`{"command":"processes","sort":"cpu","limit":5}` and falls back to
+`snapshot` for older backends; it never launches Python or another process and
+never opens a TCP port. `BackendProvider.qml` validates, CPU-sorts, deterministically
 tie-breaks, and bounds the display model before the full representation reads
 it. Backend architecture, protocol, manual commands, and privacy details are documented in
 [`backend/README.md`](backend/README.md).

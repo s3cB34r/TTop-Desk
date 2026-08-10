@@ -10,6 +10,7 @@ Item {
     id: provider
 
     property bool enabled: true
+    property bool autoPoll: true
     property bool debugBackend: false
     property int refreshIntervalMs: 2000
     property int maximumProcessEntries: 5
@@ -17,10 +18,16 @@ Item {
     property string socketPath: socketClient.defaultSocketPath()
 
     readonly property bool backendAvailable: backendState === "connected"
+    readonly property bool backendConnected: backendAvailable
+    readonly property bool backendServiceAvailable: backendAvailable
     property string backendState: "detecting"
     property var processEntries: []
     property int processCount: 0
     property string backendError: ""
+    property real backendLastResponse: 0
+    property int backendProtocolVersion: 0
+    property bool boundedProcessRequestSupported: true
+    property string lastRequestCommand: ""
 
     readonly property int effectiveRefreshIntervalMs:
         [1000, 2000, 5000].indexOf(Number(refreshIntervalMs)) !== -1
@@ -108,7 +115,18 @@ Item {
             if (debugBackend) console.log("TTop Desk backend: protocol version error");
             return;
         }
+        backendProtocolVersion = Number(response.version);
         if (response.status === "error") {
+            if (response.error === "unsupported_command"
+                    && lastRequestCommand === "processes") {
+                boundedProcessRequestSupported = false;
+                setState("detecting", "");
+                if (debugBackend) {
+                    console.log("TTop Desk backend: bounded process request unsupported; using snapshot fallback");
+                }
+                fallbackTimer.restart();
+                return;
+            }
             clearProcesses();
             setState("error", String(response.error || "backend_error"));
             if (debugBackend) console.log("TTop Desk backend: protocol error " + backendError);
@@ -142,6 +160,7 @@ Item {
         }
         processEntries = normalized;
         processCount = normalized.length;
+        backendLastResponse = Date.now();
         setState("connected", "");
 
         if (debugBackend && rejected > 0) {
@@ -153,12 +172,22 @@ Item {
         }
     }
 
-    function requestSnapshot() {
+    function requestProcesses() {
         if (!enabled || socketClient === null || socketClient.busy) return;
         if (debugBackend && (backendState === "unavailable" || backendState === "error")) {
             console.log("TTop Desk backend: reconnect attempt");
         }
-        socketClient.request('{"command":"snapshot"}');
+        if (boundedProcessRequestSupported) {
+            lastRequestCommand = "processes";
+            socketClient.request(JSON.stringify({
+                "command": "processes",
+                "sort": "cpu",
+                "limit": effectiveMaximumProcessEntries
+            }));
+        } else {
+            lastRequestCommand = "snapshot";
+            socketClient.request('{"command":"snapshot"}');
+        }
     }
 
     onEnabledChanged: {
@@ -192,8 +221,16 @@ Item {
         }
         function onTransportError(errorCode) {
             provider.clearProcesses();
+            provider.boundedProcessRequestSupported = true;
             provider.setState("unavailable", errorCode);
         }
+    }
+
+    Timer {
+        id: fallbackTimer
+        interval: 100
+        repeat: false
+        onTriggered: provider.requestProcesses()
     }
 
     Timer {
@@ -202,8 +239,8 @@ Item {
                   || provider.backendState === "error"
                   ? provider.retryIntervalMs : provider.effectiveRefreshIntervalMs
         repeat: true
-        running: provider.enabled
+        running: provider.enabled && provider.autoPoll
         triggeredOnStart: true
-        onTriggered: provider.requestSnapshot()
+        onTriggered: provider.requestProcesses()
     }
 }
