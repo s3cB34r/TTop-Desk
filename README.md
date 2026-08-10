@@ -4,7 +4,14 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.6 is complete. It provides separate compact and full
+Milestone 1.7a adds a development-only process sensor capability probe and a
+defensive normalization provider. There is no visible process UI yet, and the
+existing widget layout is unchanged. Process availability depends entirely on
+what the Plasma 5 system-monitor sensors expose on the host; no external
+commands or backend are used. Milestone 1.7b will proceed only if this probe
+confirms usable per-process data.
+
+Milestone 1.6 provides separate compact and full
 representations, persistent Plasma settings, per-section visibility controls,
 safe refresh interval controls, theme-aware styling, and a configurable
 filesystem row limit. All live metrics from Milestone 1.5 remain available:
@@ -22,8 +29,8 @@ TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
 DataEngine without its former backend. There is no Python backend or external
 runtime dependency.
 
-SMART data, GPU monitoring, disk temperatures, and process metrics remain
-future milestones, as does integration with a shared TTop Core backend.
+SMART data, GPU monitoring, disk temperatures, and visible process metrics
+remain future milestones, as does integration with a shared TTop Core backend.
 
 ## Prerequisites
 
@@ -157,6 +164,31 @@ sources are direct values or cumulative counters.
 Return the property to `false` after troubleshooting to keep normal Plasma logs
 quiet.
 
+### Process sensor capability probe
+
+Milestone 1.7a includes `ProcessProvider.qml` without instantiating it in the
+production widget. Run its development-only Plasma harness with:
+
+```bash
+plasmoidviewer -a "$(pwd)/tests/process-probe"
+```
+
+The probe discovers process-related `systemmonitor` sources, inspects aggregate
+arrays or maps and per-process sensor families, and prints high-level structure
+information plus at most five normalized examples. It does not read `/proc`,
+run process-list commands, or expose command-line arguments. CPU normalization
+is provisional when source metadata does not define whether values are
+system-wide percentages, per-core percentages, or another raw scale; finite
+non-negative values are preserved without clamping to 100%. Resident/RSS
+memory is emitted only when byte units can be determined safely.
+
+On the primary Plasma 5.27.12 validation host, neither the legacy
+`systemmonitor` DataEngine nor the native KSysGuard sensor tree advertised a
+process-related source. Consequently there was no runtime process payload
+structure or field set to normalize, CPU and resident-memory process values
+were unavailable, and the provider cleanly reported `unavailable`. On this
+host, Milestone 1.7b is not viable using Plasma system-monitor sensors alone.
+
 Follow relevant Plasma and QML messages with:
 
 ```bash
@@ -244,6 +276,12 @@ percentage. `SectionHeader.qml` provides consistent theme-aware section titles,
 status text, and optional semantic icons. This boundary leaves room for a later
 shared TTop Core adapter without coupling system data collection to the
 Plasma-specific visual components.
+
+`ProcessProvider.qml` is a separate, currently uninstantiated capability layer
+for Milestone 1.7a. It performs bounded startup/recovery discovery, defensive
+array/map/nested-map normalization, PID deduplication, and stale per-process
+record expiry. The development probe lives under `tests/` and is not installed
+with the widget package.
 
 Legacy `mem/physical/*` values without unit metadata are assumed to be KiB,
 matching Plasma 5's KSysGuard sensor convention. Explicit unit metadata always

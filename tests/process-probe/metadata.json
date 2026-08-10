@@ -6,11 +6,11 @@
             }
         ],
         "Category": "System Information",
-        "Description": "A compact system-monitor widget for KDE Plasma 5.",
+        "Description": "Development-only ProcessProvider capability probe.",
         "Icon": "utilities-system-monitor",
-        "Id": "io.github.s3cb34r.ttopdesk",
+        "Id": "io.github.s3cb34r.ttopdesk.processprobe",
         "License": "GPL-3.0-or-later",
-        "Name": "TTop Desk",
+        "Name": "TTop Desk Process Probe",
         "ServiceTypes": [
             "Plasma/Applet"
         ],
