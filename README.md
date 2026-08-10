@@ -4,7 +4,12 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.10 adds an optional `systemd --user` service for normal daily
+Milestone 1.11 adds live, persistent customization for the widget title,
+section and sub-element visibility, process sorting and row limits, refresh
+intervals, spacing, and theme-aware background appearance. Everything remains
+enabled by default, and hidden sections release their layout space.
+
+Milestone 1.10 added an optional `systemd --user` service for normal daily
 backend use and a bounded protocol-v1 process request. The widget now asks the
 backend for only its configured CPU-sorted rows and falls back to the original
 snapshot request when connected to a Milestone 1.8/1.9 backend.
@@ -68,18 +73,39 @@ Open the settings by right-clicking TTop Desk and choosing **Configure TTop
 Desk…**. Changes apply to the running widget and are stored by Plasma; no Plasma
 restart is required.
 
-The settings page can independently show or hide CPU, memory, network,
-temperature, filesystems, and disk I/O in the detailed view. It can also toggle
-the full-view header and metric icons. The normal refresh interval can be set
-to 500 ms, 1 second, 2 seconds, or 5 seconds. The filesystem interval accepts
-safe values from 5 to 60 seconds, and the maximum number of filesystem rows can
-be set from 1 to 10. **Show network and temperature details** adds those values
-to the compact representation when their sections are enabled.
+The six settings groups are **General**, **Display**, **Metrics**,
+**Processes**, **Refresh**, and **Appearance**. The visible title defaults to
+`TTop Desk`, is trimmed to 40 characters, and can be edited without changing
+the plugin ID. Header, CPU, RAM, temperature, network, disk I/O, filesystems,
+Top Processes, metric icons, and section labels are enabled by default.
 
-The read-only process section can also be hidden. It displays 3, 4, or 5 rows
-and can refresh every 1, 2, or 5 seconds. It is always sorted by CPU descending
-with process name and PID tie-breakers. CPU values are not clamped to 100%, and
-memory is resident set size formatted in MiB or GiB.
+CPU, memory, and filesystem progress bars can be hidden independently. Network
+receive/transmit and disk read/write values can also be selected separately.
+Process CPU and RSS columns are optional; if both are hidden, process names
+remain visible. Hidden sections and controls contribute no layout height.
+
+The read-only process section displays 3, 4, or 5 rows, refreshes every 1, 2,
+or 5 seconds, and can sort by CPU or resident memory. The provider sends the
+selected sort and exact visible limit in its bounded backend request. CPU values
+are not clamped to 100%, and memory uses RSS formatted in MiB or GiB.
+
+Live Plasma metrics refresh at 500 ms, 1, 2, or 5 seconds. Filesystems refresh
+at 5, 10, 15, 30, or 60 seconds and display 1–5 filtered rows. Compact and dense
+spacing controls reduce gaps without changing font size. **Show network and
+temperature details** controls those values in the compact representation.
+
+The full card uses the Plasma theme background by default. Its opacity can be
+set from 35% to 100% in 5% steps. Turning off the theme background enables a
+validated hexadecimal custom color; normal text continues to use Plasma theme
+colors for light/dark compatibility. All changes apply live without restarting
+Plasma or the backend.
+
+Example configurations:
+
+- **Minimal:** enable only CPU and RAM.
+- **Full:** leave every section and sub-element enabled.
+- **Process-focused:** enable CPU, RAM, and Top Processes; choose CPU or memory
+  sorting and 3–5 rows.
 
 In a panel, the compact representation prioritizes CPU and RAM percentages.
 It lays values out in a row for horizontal panels and stacks them for vertical
@@ -354,9 +380,10 @@ replacing working Plasma-native metrics. It communicates only through a
 restrictive per-user Unix-domain socket, opens no network ports, needs no
 elevated permissions. Milestone 1.9 connects it through a small in-process Qt
 5 `QLocalSocket` QML bridge. The bridge sends the protocol-v1 bounded request
-`{"command":"processes","sort":"cpu","limit":5}` and falls back to
+`{"command":"processes","sort":"cpu","limit":5}` by default, substitutes
+the configured `cpu`/`memory` sort and 3–5 row limit live, and falls back to
 `snapshot` for older backends; it never launches Python or another process and
-never opens a TCP port. `BackendProvider.qml` validates, CPU-sorts, deterministically
+never opens a TCP port. `BackendProvider.qml` validates, metric-sorts, deterministically
 tie-breaks, and bounds the display model before the full representation reads
 it. Backend architecture, protocol, manual commands, and privacy details are documented in
 [`backend/README.md`](backend/README.md).

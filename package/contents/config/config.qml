@@ -8,8 +8,8 @@ import org.kde.plasma.configuration 2.0
 
 ConfigModel {
     ConfigCategory {
-        name: qsTr("Display and updates")
-        icon: "preferences-system-time"
+        name: qsTr("TTop Desk settings")
+        icon: "configure"
         source: "ConfigGeneral.qml"
     }
 }

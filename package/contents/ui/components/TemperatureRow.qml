@@ -15,6 +15,7 @@ RowLayout {
     property string availabilityState: "loading"
     property string severity: "unknown"
     property bool showIcon: true
+    property bool showLabel: true
 
     readonly property bool available: availabilityState === "available"
     readonly property string displayedValue: available
@@ -33,6 +34,7 @@ RowLayout {
     }
 
     PlasmaComponents.Label {
+        visible: row.showLabel
         Layout.fillWidth: true
         text: qsTr("TEMPERATURE")
         color: PlasmaCore.Theme.textColor
@@ -40,6 +42,7 @@ RowLayout {
     }
 
     PlasmaComponents.Label {
+        Layout.alignment: Qt.AlignRight
         text: row.displayedValue
         color: row.available ? PlasmaCore.Theme.highlightColor
                              : PlasmaCore.Theme.disabledTextColor

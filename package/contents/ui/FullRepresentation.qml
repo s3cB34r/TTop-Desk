@@ -24,10 +24,33 @@ Rectangle {
     property bool showProcesses: true
     property bool showHeader: true
     property bool showMetricIcons: true
+    property bool showSectionLabels: true
+    property bool showCpuProgressBar: true
+    property bool showMemoryProgressBar: true
+    property bool showFilesystemProgressBars: true
+    property bool showProcessCpu: true
+    property bool showProcessMemory: true
+    property bool showNetworkRx: true
+    property bool showNetworkTx: true
+    property bool showDiskRead: true
+    property bool showDiskWrite: true
+    property bool compactSpacing: false
+    property bool denseMode: false
+    property string widgetTitle: "TTop Desk"
+    property real backgroundOpacity: 1.0
+    property bool usePlasmaThemeBackground: true
+    property color customBackgroundColor: "#20252b"
 
     readonly property int contentMargin: PlasmaCore.Units.largeSpacing
+    readonly property int sectionSpacing: denseMode ? 0
+                                         : compactSpacing
+                                           ? Math.max(1, Math.round(PlasmaCore.Units.smallSpacing / 2))
+                                           : PlasmaCore.Units.smallSpacing
     readonly property int minimumCardWidth: PlasmaCore.Units.gridUnit * 12
     readonly property int preferredCardWidth: PlasmaCore.Units.gridUnit * 17
+    readonly property color baseBackgroundColor: usePlasmaThemeBackground
+                                                 ? PlasmaCore.Theme.backgroundColor
+                                                 : customBackgroundColor
 
     implicitWidth: preferredCardWidth
     implicitHeight: content.implicitHeight + contentMargin * 2
@@ -37,7 +60,8 @@ Rectangle {
     Layout.minimumHeight: implicitHeight
     Layout.preferredHeight: implicitHeight
 
-    color: PlasmaCore.Theme.backgroundColor
+    color: Qt.rgba(baseBackgroundColor.r, baseBackgroundColor.g,
+                   baseBackgroundColor.b, Math.max(0.35, Math.min(1, backgroundOpacity)))
     radius: PlasmaCore.Units.smallSpacing
     border.color: Qt.rgba(PlasmaCore.Theme.highlightColor.r,
                           PlasmaCore.Theme.highlightColor.g,
@@ -52,22 +76,27 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.margins: fullView.contentMargin
-        spacing: PlasmaCore.Units.smallSpacing
+        spacing: fullView.sectionSpacing
 
         RowLayout {
+            objectName: "headerSection"
             visible: fullView.showHeader
             Layout.fillWidth: true
             spacing: PlasmaCore.Units.smallSpacing
 
             PlasmaCore.IconItem {
+                objectName: "headerIcon"
+                visible: fullView.showMetricIcons
                 source: "utilities-system-monitor"
                 Layout.preferredWidth: PlasmaCore.Units.iconSizes.smallMedium
                 Layout.preferredHeight: width
             }
 
             PlasmaComponents.Label {
+                objectName: "widgetTitleLabel"
                 Layout.fillWidth: true
-                text: qsTr("TTop Desk")
+                Layout.minimumWidth: 0
+                text: fullView.widgetTitle
                 color: PlasmaCore.Theme.textColor
                 font.bold: true
                 font.pointSize: PlasmaCore.Theme.defaultFont.pointSize + 2
@@ -76,6 +105,7 @@ Rectangle {
         }
 
         Rectangle {
+            objectName: "headerSeparator"
             visible: fullView.showHeader
             Layout.fillWidth: true
             Layout.preferredHeight: 1
@@ -84,11 +114,14 @@ Rectangle {
         }
 
         Components.MetricRow {
+            objectName: "cpuSection"
             visible: fullView.showCpu
             Layout.fillWidth: true
             metricLabel: qsTr("CPU")
             iconName: "cpu"
             showIcon: fullView.showMetricIcons
+            showLabel: fullView.showSectionLabels
+            showProgressBar: fullView.showCpuProgressBar
             valueText: fullView.metricsProvider.cpuAvailable
                        ? fullView.metricsProvider.cpuPercent.toFixed(1) + "%" : ""
             progressValue: fullView.metricsProvider.cpuPercent
@@ -96,38 +129,51 @@ Rectangle {
         }
 
         Components.MetricRow {
+            objectName: "memorySection"
             visible: fullView.showMemory
             Layout.fillWidth: true
             metricLabel: qsTr("RAM")
             iconName: "memory"
             showIcon: fullView.showMetricIcons
+            showLabel: fullView.showSectionLabels
+            showProgressBar: fullView.showMemoryProgressBar
             valueText: fullView.metricsProvider.memoryDisplayText
             progressValue: fullView.metricsProvider.memoryPercent
             availabilityState: fullView.metricsProvider.memoryState
         }
 
         Components.TemperatureRow {
+            objectName: "temperatureSection"
             visible: fullView.showTemperature
             Layout.fillWidth: true
             showIcon: fullView.showMetricIcons
+            showLabel: fullView.showSectionLabels
             valueText: fullView.metricsProvider.temperatureDisplayText
             availabilityState: fullView.metricsProvider.temperatureState
             severity: fullView.metricsProvider.temperatureSeverity
         }
 
         Components.NetworkRow {
+            objectName: "networkSection"
             visible: fullView.showNetwork
             Layout.fillWidth: true
             showIcon: fullView.showMetricIcons
+            showLabel: fullView.showSectionLabels
+            showRx: fullView.showNetworkRx
+            showTx: fullView.showNetworkTx
             rxText: fullView.metricsProvider.networkRxDisplayText
             txText: fullView.metricsProvider.networkTxDisplayText
             availabilityState: fullView.metricsProvider.networkState
         }
 
         Components.DiskIoRow {
+            objectName: "diskIoSection"
             visible: fullView.showDiskIo
             Layout.fillWidth: true
             showIcon: fullView.showMetricIcons
+            showLabel: fullView.showSectionLabels
+            showRead: fullView.showDiskRead
+            showWrite: fullView.showDiskWrite
             readText: fullView.metricsProvider.diskReadDisplayText
             writeText: fullView.metricsProvider.diskWriteDisplayText
             availabilityState: fullView.metricsProvider.diskIoState
@@ -144,6 +190,7 @@ Rectangle {
                 title: qsTr("FILESYSTEMS")
                 iconName: "drive-harddisk"
                 showIcon: fullView.showMetricIcons
+                showLabel: fullView.showSectionLabels
                 statusText: fullView.metricsProvider.filesystemAvailable
                             ? ""
                             : fullView.metricsProvider.filesystemState === "unavailable"
@@ -158,6 +205,7 @@ Rectangle {
                     mountPath: model.mountPath
                     capacityText: model.displayText
                     percent: model.percent
+                    showProgressBar: fullView.showFilesystemProgressBars
                 }
             }
         }
@@ -168,18 +216,10 @@ Rectangle {
             Layout.fillWidth: true
             backendProvider: fullView.backendProvider
             showIcon: fullView.showMetricIcons
-        }
-
-        PlasmaComponents.Label {
-            visible: !fullView.showCpu && !fullView.showMemory
-                     && !fullView.showNetwork && !fullView.showTemperature
-                     && !fullView.showFilesystems && !fullView.showDiskIo
-                     && !fullView.showProcesses
-            Layout.fillWidth: true
-            text: qsTr("All metric sections are hidden. Open the widget settings to choose what to display.")
-            color: PlasmaCore.Theme.disabledTextColor
-            wrapMode: Text.WordWrap
-            horizontalAlignment: Text.AlignHCenter
+            showLabel: fullView.showSectionLabels
+            showCpu: fullView.showProcessCpu
+            showMemory: fullView.showProcessMemory
+            denseMode: fullView.denseMode
         }
     }
 }

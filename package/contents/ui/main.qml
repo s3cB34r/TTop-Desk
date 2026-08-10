@@ -6,6 +6,7 @@
 import QtQuick 2.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.plasmoid 2.0
+import "ConfigurationUtils.js" as Configuration
 
 Item {
     id: root
@@ -14,6 +15,8 @@ Item {
     property bool debugMetrics: false
     property bool debugBackend: false
 
+    readonly property string widgetTitle:
+        Configuration.title(Plasmoid.configuration.widgetTitle)
     readonly property bool showCpu: Plasmoid.configuration.showCpu
     readonly property bool showMemory: Plasmoid.configuration.showMemory
     readonly property bool showNetwork: Plasmoid.configuration.showNetwork
@@ -23,37 +26,47 @@ Item {
     readonly property bool showProcesses: Plasmoid.configuration.showProcesses
     readonly property bool showHeader: Plasmoid.configuration.showHeader
     readonly property bool showMetricIcons: Plasmoid.configuration.showMetricIcons
+    readonly property bool showSectionLabels: Plasmoid.configuration.showSectionLabels
+    readonly property bool showCpuProgressBar: Plasmoid.configuration.showCpuProgressBar
+    readonly property bool showMemoryProgressBar: Plasmoid.configuration.showMemoryProgressBar
+    readonly property bool showFilesystemProgressBars:
+        Plasmoid.configuration.showFilesystemProgressBars
+    readonly property bool showProcessCpu: Plasmoid.configuration.showProcessCpu
+    readonly property bool showProcessMemory: Plasmoid.configuration.showProcessMemory
+    readonly property bool showNetworkRx: Plasmoid.configuration.showNetworkRx
+    readonly property bool showNetworkTx: Plasmoid.configuration.showNetworkTx
+    readonly property bool showDiskRead: Plasmoid.configuration.showDiskRead
+    readonly property bool showDiskWrite: Plasmoid.configuration.showDiskWrite
+    readonly property bool compactSpacing: Plasmoid.configuration.compactSpacing
+    readonly property bool denseMode: Plasmoid.configuration.denseMode
     readonly property bool compactModeDetails: Plasmoid.configuration.compactModeDetails
+    readonly property bool usePlasmaThemeBackground:
+        Plasmoid.configuration.usePlasmaThemeBackground
+    readonly property real safeBackgroundOpacity:
+        Configuration.opacity(Plasmoid.configuration.backgroundOpacity)
+    readonly property string safeCustomBackgroundColor:
+        Configuration.color(Plasmoid.configuration.customBackgroundColor,
+                            Configuration.DEFAULT_BACKGROUND_COLOR)
 
     readonly property int safeRefreshIntervalMs:
         validRefreshInterval(Plasmoid.configuration.refreshIntervalMs)
     readonly property int safeFilesystemRefreshIntervalMs:
-        clampInteger(Plasmoid.configuration.filesystemRefreshIntervalMs, 5000, 60000, 15000)
+        Configuration.allowedInteger(Plasmoid.configuration.filesystemRefreshIntervalMs,
+                                     [5000, 10000, 15000, 30000, 60000], 15000)
     readonly property int safeMaximumFilesystemEntries:
-        clampInteger(Plasmoid.configuration.maximumFilesystemEntries, 1, 10, 3)
+        Configuration.allowedInteger(Plasmoid.configuration.maximumFilesystemEntries,
+                                     [1, 2, 3, 4, 5], 3)
     readonly property int safeMaximumProcessEntries:
-        allowedInteger(Plasmoid.configuration.maximumProcessEntries, [3, 4, 5], 5)
+        Configuration.allowedInteger(Plasmoid.configuration.maximumProcessEntries,
+                                     [3, 4, 5], 5)
     readonly property int safeProcessRefreshIntervalMs:
-        allowedInteger(Plasmoid.configuration.processRefreshIntervalMs,
-                       [1000, 2000, 5000], 2000)
+        Configuration.allowedInteger(Plasmoid.configuration.processRefreshIntervalMs,
+                                     [1000, 2000, 5000], 2000)
+    readonly property string safeProcessSortMode:
+        Configuration.processSort(Plasmoid.configuration.processSortMode)
 
     function validRefreshInterval(value) {
-        var number = Number(value);
-        var supported = [500, 1000, 2000, 5000];
-        return supported.indexOf(number) !== -1 ? number : 1000;
-    }
-
-    function clampInteger(value, minimum, maximum, fallback) {
-        var number = Number(value);
-        if (!isFinite(number) || number <= 0) {
-            return fallback;
-        }
-        return Math.max(minimum, Math.min(maximum, Math.round(number)));
-    }
-
-    function allowedInteger(value, supported, fallback) {
-        var number = Number(value);
-        return supported.indexOf(number) !== -1 ? number : fallback;
+        return Configuration.allowedInteger(value, [500, 1000, 2000, 5000], 1000);
     }
 
     // Keep undersized desktop containers in the compact view until the full
@@ -79,6 +92,7 @@ Item {
         debugBackend: root.debugBackend
         refreshIntervalMs: root.safeProcessRefreshIntervalMs
         maximumProcessEntries: root.safeMaximumProcessEntries
+        processSortMode: root.safeProcessSortMode
     }
 
     Component {
@@ -92,6 +106,7 @@ Item {
             showTemperature: root.showTemperature
             showMetricIcons: root.showMetricIcons
             compactModeDetails: root.compactModeDetails
+            widgetTitle: root.widgetTitle
             formFactor: Plasmoid.formFactor
         }
     }
@@ -111,6 +126,22 @@ Item {
             showProcesses: root.showProcesses
             showHeader: root.showHeader
             showMetricIcons: root.showMetricIcons
+            showSectionLabels: root.showSectionLabels
+            showCpuProgressBar: root.showCpuProgressBar
+            showMemoryProgressBar: root.showMemoryProgressBar
+            showFilesystemProgressBars: root.showFilesystemProgressBars
+            showProcessCpu: root.showProcessCpu
+            showProcessMemory: root.showProcessMemory
+            showNetworkRx: root.showNetworkRx
+            showNetworkTx: root.showNetworkTx
+            showDiskRead: root.showDiskRead
+            showDiskWrite: root.showDiskWrite
+            compactSpacing: root.compactSpacing
+            denseMode: root.denseMode
+            widgetTitle: root.widgetTitle
+            backgroundOpacity: root.safeBackgroundOpacity
+            usePlasmaThemeBackground: root.usePlasmaThemeBackground
+            customBackgroundColor: root.safeCustomBackgroundColor
         }
     }
 }

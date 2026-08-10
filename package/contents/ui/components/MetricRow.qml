@@ -14,6 +14,8 @@ ColumnLayout {
     property string metricLabel: ""
     property string iconName: ""
     property bool showIcon: true
+    property bool showLabel: true
+    property bool showProgressBar: true
     property string valueText: ""
     property real progressValue: 0
     // Supported states: "loading", "available", and "unavailable".
@@ -40,6 +42,7 @@ ColumnLayout {
         }
 
         PlasmaComponents.Label {
+            visible: row.showLabel
             Layout.fillWidth: true
             text: row.metricLabel
             color: PlasmaCore.Theme.textColor
@@ -47,6 +50,7 @@ ColumnLayout {
         }
 
         PlasmaComponents.Label {
+            Layout.alignment: Qt.AlignRight
             Layout.maximumWidth: row.width * 0.78
             text: row.displayedValue
             color: row.available ? PlasmaCore.Theme.highlightColor
@@ -58,6 +62,8 @@ ColumnLayout {
     }
 
     PlasmaComponents.ProgressBar {
+        objectName: "metricProgressBar"
+        visible: row.showProgressBar
         Layout.fillWidth: true
         minimumValue: 0
         maximumValue: 100

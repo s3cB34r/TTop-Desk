@@ -23,13 +23,15 @@ Item {
     property int filesystemRefreshIntervalMs: 15000
     property int maximumFilesystemEntries: 3
     readonly property int effectiveRefreshIntervalMs:
-        Math.max(500, Math.min(5000, refreshIntervalMs > 0 ? refreshIntervalMs : 1000))
+        [500, 1000, 2000, 5000].indexOf(Number(refreshIntervalMs)) !== -1
+        ? Number(refreshIntervalMs) : 1000
     readonly property int effectiveFilesystemRefreshIntervalMs:
-        Math.max(5000, Math.min(60000, filesystemRefreshIntervalMs > 0
-                               ? filesystemRefreshIntervalMs : 15000))
+        [5000, 10000, 15000, 30000, 60000]
+        .indexOf(Number(filesystemRefreshIntervalMs)) !== -1
+        ? Number(filesystemRefreshIntervalMs) : 15000
     readonly property int effectiveMaximumFilesystemEntries:
-        Math.max(1, Math.min(10, maximumFilesystemEntries > 0
-                            ? maximumFilesystemEntries : 3))
+        [1, 2, 3, 4, 5].indexOf(Number(maximumFilesystemEntries)) !== -1
+        ? Number(maximumFilesystemEntries) : 3
 
     readonly property bool cpuAvailable: cpuState === "available"
     property real cpuPercent: 0

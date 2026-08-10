@@ -15,6 +15,9 @@ ColumnLayout {
     property string writeText: ""
     property string availabilityState: "loading"
     property bool showIcon: true
+    property bool showLabel: true
+    property bool showRead: true
+    property bool showWrite: true
 
     readonly property bool available: availabilityState === "available"
     readonly property string statusText: availabilityState === "unavailable"
@@ -29,6 +32,7 @@ ColumnLayout {
         title: qsTr("DISK I/O")
         iconName: "drive-harddisk"
         showIcon: row.showIcon
+        showLabel: row.showLabel
         statusText: row.available ? "" : row.statusText
     }
 
@@ -38,6 +42,7 @@ ColumnLayout {
         visible: row.available
 
         PlasmaComponents.Label {
+            visible: row.showRead
             Layout.fillWidth: true
             text: "↓ READ  " + row.readText
             color: PlasmaCore.Theme.highlightColor
@@ -46,6 +51,7 @@ ColumnLayout {
         }
 
         PlasmaComponents.Label {
+            visible: row.showWrite
             Layout.fillWidth: true
             text: "↑ WRITE  " + row.writeText
             color: PlasmaCore.Theme.highlightColor

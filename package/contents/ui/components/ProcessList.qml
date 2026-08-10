@@ -12,8 +12,12 @@ ColumnLayout {
 
     property var backendProvider
     property bool showIcon: true
+    property bool showLabel: true
+    property bool showCpu: true
+    property bool showMemory: true
+    property bool denseMode: false
 
-    spacing: PlasmaCore.Units.smallSpacing
+    spacing: denseMode ? 0 : PlasmaCore.Units.smallSpacing
 
     function statusText() {
         if (backendProvider.backendState === "detecting") return qsTr("Detecting…");
@@ -27,6 +31,7 @@ ColumnLayout {
         title: qsTr("TOP PROCESSES")
         iconName: "view-process-all"
         showIcon: processList.showIcon
+        showLabel: processList.showLabel
         statusText: processList.statusText()
     }
 
@@ -37,8 +42,10 @@ ColumnLayout {
             Layout.fillWidth: true
             processPid: modelData.pid
             processName: modelData.name
-            cpuPercent: modelData.cpuPercent
+            cpuPercent: modelData.cpuPercent === undefined ? NaN : modelData.cpuPercent
             memoryBytes: modelData.memoryBytes === undefined ? NaN : modelData.memoryBytes
+            showCpu: processList.showCpu
+            showMemory: processList.showMemory
         }
     }
 }

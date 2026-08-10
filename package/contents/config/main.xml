@@ -6,6 +6,9 @@
   <kcfgfile name=""/>
 
   <group name="General">
+    <entry name="widgetTitle" type="String">
+      <default>TTop Desk</default>
+    </entry>
     <entry name="showCpu" type="Bool">
       <default>true</default>
     </entry>
@@ -33,6 +36,42 @@
     <entry name="showMetricIcons" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="showSectionLabels" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showCpuProgressBar" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showMemoryProgressBar" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showFilesystemProgressBars" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showProcessCpu" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showProcessMemory" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showNetworkRx" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showNetworkTx" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showDiskRead" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showDiskWrite" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="compactSpacing" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="denseMode" type="Bool">
+      <default>false</default>
+    </entry>
     <entry name="compactModeDetails" type="Bool">
       <default>false</default>
     </entry>
@@ -48,8 +87,20 @@
     <entry name="maximumProcessEntries" type="Int">
       <default>5</default>
     </entry>
+    <entry name="processSortMode" type="String">
+      <default>cpu</default>
+    </entry>
     <entry name="processRefreshIntervalMs" type="Int">
       <default>2000</default>
+    </entry>
+    <entry name="backgroundOpacity" type="Double">
+      <default>1.0</default>
+    </entry>
+    <entry name="usePlasmaThemeBackground" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="customBackgroundColor" type="String">
+      <default>#20252b</default>
     </entry>
   </group>
 </kcfg>

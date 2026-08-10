@@ -14,6 +14,7 @@ Item {
     property bool debugBackend: false
     property int refreshIntervalMs: 2000
     property int maximumProcessEntries: 5
+    property string processSortMode: "cpu"
     property var socketClient: ttopBackendSocketBridge
     property string socketPath: socketClient.defaultSocketPath()
 
@@ -33,7 +34,10 @@ Item {
         [1000, 2000, 5000].indexOf(Number(refreshIntervalMs)) !== -1
         ? Number(refreshIntervalMs) : 2000
     readonly property int effectiveMaximumProcessEntries:
-        Math.max(3, Math.min(5, Math.round(Number(maximumProcessEntries) || 5)))
+        [3, 4, 5].indexOf(Number(maximumProcessEntries)) !== -1
+        ? Number(maximumProcessEntries) : 5
+    readonly property string effectiveProcessSortMode:
+        processSortMode === "memory" ? "memory" : "cpu"
     readonly property int retryIntervalMs: 5000
 
     property string lastLoggedState: ""
@@ -71,22 +75,30 @@ Item {
         }
         var pid = safePid(entry.pid);
         var cpu = finiteNonnegative(entry.cpuPercent);
-        if (pid <= 0 || !isFinite(cpu) || typeof entry.name !== "string") {
+        var memory = finiteNonnegative(entry.memoryBytes);
+        if (pid <= 0 || typeof entry.name !== "string") {
             return null;
         }
+        if (effectiveProcessSortMode === "cpu" && !isFinite(cpu)) return null;
+        if (effectiveProcessSortMode === "memory" && !isFinite(memory)) return null;
         var name = entry.name.replace(/^\s+|\s+$/g, "");
         if (name === "" || name.length > 256 || name.indexOf("\u0000") !== -1) {
             return null;
         }
-        var normalized = { "pid": pid, "name": name, "cpuPercent": cpu };
-        var memory = finiteNonnegative(entry.memoryBytes);
+        var normalized = { "pid": pid, "name": name };
+        if (isFinite(cpu)) normalized.cpuPercent = cpu;
         if (isFinite(memory)) normalized.memoryBytes = memory;
         return normalized;
     }
 
     function processOrder(left, right) {
-        if (left.cpuPercent !== right.cpuPercent) {
-            return right.cpuPercent - left.cpuPercent;
+        var metric = effectiveProcessSortMode === "memory" ? "memoryBytes" : "cpuPercent";
+        var leftValue = finiteNonnegative(left[metric]);
+        var rightValue = finiteNonnegative(right[metric]);
+        if (!isFinite(leftValue)) leftValue = -1;
+        if (!isFinite(rightValue)) rightValue = -1;
+        if (leftValue !== rightValue) {
+            return rightValue - leftValue;
         }
         var nameOrder = left.name.localeCompare(right.name);
         return nameOrder !== 0 ? nameOrder : left.pid - right.pid;
@@ -145,7 +157,8 @@ Item {
             var sourceEntry = response.processes[index];
             // A missing CPU field is the backend's intentional first-sample
             // warm-up state, not malformed data and not suitable for ranking.
-            if (sourceEntry !== null && typeof sourceEntry === "object"
+            if (effectiveProcessSortMode === "cpu"
+                    && sourceEntry !== null && typeof sourceEntry === "object"
                     && !Array.isArray(sourceEntry)
                     && sourceEntry.cpuPercent === undefined) {
                 continue;
@@ -181,7 +194,7 @@ Item {
             lastRequestCommand = "processes";
             socketClient.request(JSON.stringify({
                 "command": "processes",
-                "sort": "cpu",
+                "sort": effectiveProcessSortMode,
                 "limit": effectiveMaximumProcessEntries
             }));
         } else {
@@ -204,6 +217,14 @@ Item {
             var limited = processEntries.slice(0, effectiveMaximumProcessEntries);
             processEntries = limited;
             processCount = limited.length;
+        }
+        if (enabled) configurationRequestTimer.restart();
+    }
+    onEffectiveProcessSortModeChanged: {
+        clearProcesses();
+        if (enabled) {
+            setState("detecting", "");
+            configurationRequestTimer.restart();
         }
     }
 
@@ -229,6 +250,13 @@ Item {
     Timer {
         id: fallbackTimer
         interval: 100
+        repeat: false
+        onTriggered: provider.requestProcesses()
+    }
+
+    Timer {
+        id: configurationRequestTimer
+        interval: 50
         repeat: false
         onTriggered: provider.requestProcesses()
     }

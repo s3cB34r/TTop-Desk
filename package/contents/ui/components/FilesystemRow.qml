@@ -14,6 +14,7 @@ ColumnLayout {
     property string mountPath: ""
     property string capacityText: ""
     property real percent: 0
+    property bool showProgressBar: true
 
     spacing: 0
 
@@ -43,6 +44,8 @@ ColumnLayout {
     }
 
     PlasmaComponents.ProgressBar {
+        objectName: "filesystemProgressBar"
+        visible: row.showProgressBar
         Layout.fillWidth: true
         minimumValue: 0
         maximumValue: 100

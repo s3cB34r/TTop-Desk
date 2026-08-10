@@ -14,6 +14,9 @@ ColumnLayout {
     property string rxText: ""
     property string txText: ""
     property bool showIcon: true
+    property bool showLabel: true
+    property bool showRx: true
+    property bool showTx: true
     // Supported states: "loading", "available", and "unavailable".
     property string availabilityState: "loading"
 
@@ -30,6 +33,7 @@ ColumnLayout {
         title: qsTr("NETWORK")
         iconName: "network-wired"
         showIcon: row.showIcon
+        showLabel: row.showLabel
         statusText: row.available ? "" : row.statusText
     }
 
@@ -39,6 +43,7 @@ ColumnLayout {
         visible: row.available
 
         PlasmaComponents.Label {
+            visible: row.showRx
             Layout.fillWidth: true
             text: "↓ RX  " + row.rxText
             color: PlasmaCore.Theme.highlightColor
@@ -47,6 +52,7 @@ ColumnLayout {
         }
 
         PlasmaComponents.Label {
+            visible: row.showTx
             Layout.fillWidth: true
             text: "↑ TX  " + row.txText
             color: PlasmaCore.Theme.highlightColor

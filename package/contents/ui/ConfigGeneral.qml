@@ -7,145 +7,161 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15 as QtControls
 import QtQuick.Layouts 1.15
 import org.kde.kirigami 2.20 as Kirigami
+import "ConfigurationUtils.js" as Configuration
 
 Kirigami.FormLayout {
     id: configPage
 
-    property alias cfg_showCpu: showCpuCheckBox.checked
-    property alias cfg_showMemory: showMemoryCheckBox.checked
-    property alias cfg_showNetwork: showNetworkCheckBox.checked
-    property alias cfg_showTemperature: showTemperatureCheckBox.checked
-    property alias cfg_showFilesystems: showFilesystemsCheckBox.checked
-    property alias cfg_showDiskIo: showDiskIoCheckBox.checked
-    property alias cfg_showProcesses: showProcessesCheckBox.checked
-    property alias cfg_showHeader: showHeaderCheckBox.checked
-    property alias cfg_showMetricIcons: showMetricIconsCheckBox.checked
-    property alias cfg_compactModeDetails: compactDetailsCheckBox.checked
-    property int cfg_refreshIntervalMs: 1000
-    property alias cfg_filesystemRefreshIntervalMs: filesystemIntervalSpinBox.value
-    property alias cfg_maximumFilesystemEntries: filesystemEntriesSpinBox.value
+    property alias cfg_widgetTitle: titleField.text
+    property alias cfg_showHeader: showHeader.checked
+    property alias cfg_showMetricIcons: showMetricIcons.checked
+    property alias cfg_showSectionLabels: showSectionLabels.checked
+    property alias cfg_compactSpacing: compactSpacing.checked
+    property alias cfg_denseMode: denseMode.checked
+    property alias cfg_compactModeDetails: compactDetails.checked
+    property alias cfg_showCpu: showCpu.checked
+    property alias cfg_showMemory: showMemory.checked
+    property alias cfg_showTemperature: showTemperature.checked
+    property alias cfg_showNetwork: showNetwork.checked
+    property alias cfg_showDiskIo: showDiskIo.checked
+    property alias cfg_showFilesystems: showFilesystems.checked
+    property alias cfg_showCpuProgressBar: cpuBar.checked
+    property alias cfg_showMemoryProgressBar: memoryBar.checked
+    property alias cfg_showFilesystemProgressBars: filesystemBars.checked
+    property alias cfg_showNetworkRx: networkRx.checked
+    property alias cfg_showNetworkTx: networkTx.checked
+    property alias cfg_showDiskRead: diskRead.checked
+    property alias cfg_showDiskWrite: diskWrite.checked
+    property alias cfg_showProcesses: showProcesses.checked
+    property string cfg_processSortMode: "cpu"
     property int cfg_maximumProcessEntries: 5
     property int cfg_processRefreshIntervalMs: 2000
-
-    function refreshIndex(value) {
-        var options = [500, 1000, 2000, 5000];
-        var index = options.indexOf(Number(value));
-        return index >= 0 ? index : 1;
-    }
+    property alias cfg_showProcessCpu: showProcessCpu.checked
+    property alias cfg_showProcessMemory: showProcessMemory.checked
+    property int cfg_refreshIntervalMs: 1000
+    property int cfg_filesystemRefreshIntervalMs: 15000
+    property int cfg_maximumFilesystemEntries: 3
+    property alias cfg_usePlasmaThemeBackground: themeBackground.checked
+    property real cfg_backgroundOpacity: 1.0
+    property alias cfg_customBackgroundColor: customColor.text
 
     function optionIndex(value, options, fallbackIndex) {
-        var index = options.indexOf(Number(value));
+        var index = options.indexOf(value);
         return index >= 0 ? index : fallbackIndex;
     }
 
     Kirigami.Heading {
         Kirigami.FormData.isSection: true
         level: 3
-        text: qsTr("Visible sections")
+        text: qsTr("General")
+    }
+
+    QtControls.TextField {
+        id: titleField
+        Kirigami.FormData.label: qsTr("Widget title:")
+        maximumLength: 40
+        placeholderText: Configuration.DEFAULT_TITLE
+        selectByMouse: true
+        onEditingFinished: text = Configuration.title(text)
+        Accessible.name: qsTr("Visible widget title")
     }
 
     QtControls.CheckBox {
-        id: showCpuCheckBox
-        Kirigami.FormData.label: qsTr("Metrics:")
-        text: qsTr("CPU usage")
-    }
-
-    QtControls.CheckBox {
-        id: showMemoryCheckBox
-        text: qsTr("Memory usage")
-    }
-
-    QtControls.CheckBox {
-        id: showNetworkCheckBox
-        text: qsTr("Network throughput")
-    }
-
-    QtControls.CheckBox {
-        id: showTemperatureCheckBox
-        text: qsTr("CPU temperature")
-    }
-
-    QtControls.CheckBox {
-        id: showFilesystemsCheckBox
-        text: qsTr("Filesystem capacity")
-    }
-
-    QtControls.CheckBox {
-        id: showDiskIoCheckBox
-        text: qsTr("Disk read/write throughput")
-    }
-
-    QtControls.CheckBox {
-        id: showProcessesCheckBox
-        text: qsTr("Top processes")
-    }
-
-    Kirigami.Heading {
-        Kirigami.FormData.isSection: true
-        level: 3
-        text: qsTr("Appearance")
-    }
-
-    QtControls.CheckBox {
-        id: showHeaderCheckBox
-        Kirigami.FormData.label: qsTr("Full view:")
+        id: showHeader
         text: qsTr("Show widget header")
     }
 
-    QtControls.CheckBox {
-        id: showMetricIconsCheckBox
-        text: qsTr("Show metric icons")
+    Kirigami.Heading {
+        Kirigami.FormData.isSection: true
+        level: 3
+        text: qsTr("Display")
     }
 
+    QtControls.CheckBox { id: showMetricIcons; text: qsTr("Show metric icons") }
+    QtControls.CheckBox { id: showSectionLabels; text: qsTr("Show section labels") }
+    QtControls.CheckBox { id: compactSpacing; text: qsTr("Use compact section spacing") }
+    QtControls.CheckBox { id: denseMode; text: qsTr("Use dense row spacing") }
     QtControls.CheckBox {
-        id: compactDetailsCheckBox
-        Kirigami.FormData.label: qsTr("Compact view:")
-        text: qsTr("Show network and temperature details")
+        id: compactDetails
+        text: qsTr("Show network and temperature details in compact view")
     }
 
     Kirigami.Heading {
         Kirigami.FormData.isSection: true
         level: 3
-        text: qsTr("Update intervals")
+        text: qsTr("Metrics")
     }
 
+    QtControls.CheckBox { id: showCpu; text: qsTr("Show CPU") }
+    QtControls.CheckBox { id: cpuBar; text: qsTr("Show CPU progress bar"); enabled: showCpu.checked }
+    QtControls.CheckBox { id: showMemory; text: qsTr("Show memory") }
+    QtControls.CheckBox { id: memoryBar; text: qsTr("Show memory progress bar"); enabled: showMemory.checked }
+    QtControls.CheckBox { id: showTemperature; text: qsTr("Show temperature") }
+    QtControls.CheckBox { id: showNetwork; text: qsTr("Show network") }
+    QtControls.CheckBox { id: networkRx; text: qsTr("Show network receive rate"); enabled: showNetwork.checked }
+    QtControls.CheckBox { id: networkTx; text: qsTr("Show network transmit rate"); enabled: showNetwork.checked }
+    QtControls.CheckBox { id: showDiskIo; text: qsTr("Show disk I/O") }
+    QtControls.CheckBox { id: diskRead; text: qsTr("Show disk read rate"); enabled: showDiskIo.checked }
+    QtControls.CheckBox { id: diskWrite; text: qsTr("Show disk write rate"); enabled: showDiskIo.checked }
+    QtControls.CheckBox { id: showFilesystems; text: qsTr("Show filesystems") }
+    QtControls.CheckBox {
+        id: filesystemBars
+        text: qsTr("Show filesystem progress bars")
+        enabled: showFilesystems.checked
+    }
+
+    Kirigami.Heading {
+        Kirigami.FormData.isSection: true
+        level: 3
+        text: qsTr("Processes")
+    }
+
+    QtControls.CheckBox { id: showProcesses; text: qsTr("Show Top Processes") }
+
     QtControls.ComboBox {
-        id: refreshIntervalComboBox
-        Kirigami.FormData.label: qsTr("Metrics:")
-        Layout.minimumWidth: Kirigami.Units.gridUnit * 9
+        Kirigami.FormData.label: qsTr("Process sorting:")
+        enabled: showProcesses.checked
         textRole: "label"
-        valueRole: "milliseconds"
+        valueRole: "mode"
         model: [
-            { "label": qsTr("500 ms"), "milliseconds": 500 },
-            { "label": qsTr("1 second"), "milliseconds": 1000 },
-            { "label": qsTr("2 seconds"), "milliseconds": 2000 },
-            { "label": qsTr("5 seconds"), "milliseconds": 5000 }
+            { "label": qsTr("CPU usage"), "mode": "cpu" },
+            { "label": qsTr("Resident memory"), "mode": "memory" }
         ]
-        currentIndex: configPage.refreshIndex(configPage.cfg_refreshIntervalMs)
-        onActivated: configPage.cfg_refreshIntervalMs = currentValue
-        Accessible.name: qsTr("Normal metric refresh interval")
-    }
-
-    QtControls.SpinBox {
-        id: filesystemIntervalSpinBox
-        Kirigami.FormData.label: qsTr("Filesystems:")
-        from: 5000
-        to: 60000
-        stepSize: 5000
-        editable: true
-        textFromValue: function(value) {
-            return qsTr("%1 seconds").arg(value / 1000);
-        }
-        valueFromText: function(text) {
-            var parsed = Number.fromLocaleString(Qt.locale(), text.replace(/[^0-9.,]/g, ""));
-            return isFinite(parsed) ? Math.round(parsed * 1000) : 15000;
-        }
-        Accessible.name: qsTr("Filesystem refresh interval in seconds")
+        currentIndex: configPage.optionIndex(configPage.cfg_processSortMode,
+                                             ["cpu", "memory"], 0)
+        onActivated: configPage.cfg_processSortMode = currentValue
     }
 
     QtControls.ComboBox {
-        id: processIntervalComboBox
-        Kirigami.FormData.label: qsTr("Processes:")
+        Kirigami.FormData.label: qsTr("Process rows:")
+        enabled: showProcesses.checked
+        textRole: "label"
+        valueRole: "count"
+        model: [
+            { "label": "3", "count": 3 },
+            { "label": "4", "count": 4 },
+            { "label": "5", "count": 5 }
+        ]
+        currentIndex: configPage.optionIndex(configPage.cfg_maximumProcessEntries,
+                                             [3, 4, 5], 2)
+        onActivated: configPage.cfg_maximumProcessEntries = currentValue
+    }
+
+    QtControls.CheckBox {
+        id: showProcessCpu
+        text: qsTr("Show process CPU column")
+        enabled: showProcesses.checked
+    }
+
+    QtControls.CheckBox {
+        id: showProcessMemory
+        text: qsTr("Show process memory column")
+        enabled: showProcesses.checked
+    }
+
+    QtControls.ComboBox {
+        Kirigami.FormData.label: qsTr("Process update:")
+        enabled: showProcesses.checked
         Layout.minimumWidth: Kirigami.Units.gridUnit * 9
         textRole: "label"
         valueRole: "milliseconds"
@@ -157,32 +173,97 @@ Kirigami.FormLayout {
         currentIndex: configPage.optionIndex(configPage.cfg_processRefreshIntervalMs,
                                              [1000, 2000, 5000], 1)
         onActivated: configPage.cfg_processRefreshIntervalMs = currentValue
-        Accessible.name: qsTr("Process refresh interval")
     }
 
-    QtControls.SpinBox {
-        id: filesystemEntriesSpinBox
-        Kirigami.FormData.label: qsTr("Filesystem rows:")
-        from: 1
-        to: 10
-        stepSize: 1
-        editable: true
-        Accessible.name: qsTr("Maximum displayed filesystem entries")
+    Kirigami.Heading {
+        Kirigami.FormData.isSection: true
+        level: 3
+        text: qsTr("Refresh")
     }
 
     QtControls.ComboBox {
-        id: processEntriesComboBox
-        Kirigami.FormData.label: qsTr("Process rows:")
+        Kirigami.FormData.label: qsTr("Live metrics:")
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 10
+        textRole: "label"
+        valueRole: "milliseconds"
+        model: [
+            { "label": qsTr("500 ms"), "milliseconds": 500 },
+            { "label": qsTr("1 second"), "milliseconds": 1000 },
+            { "label": qsTr("2 seconds"), "milliseconds": 2000 },
+            { "label": qsTr("5 seconds"), "milliseconds": 5000 }
+        ]
+        currentIndex: configPage.optionIndex(configPage.cfg_refreshIntervalMs,
+                                             [500, 1000, 2000, 5000], 1)
+        onActivated: configPage.cfg_refreshIntervalMs = currentValue
+    }
+
+    QtControls.ComboBox {
+        Kirigami.FormData.label: qsTr("Filesystems:")
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 10
+        textRole: "label"
+        valueRole: "milliseconds"
+        model: [
+            { "label": qsTr("5 seconds"), "milliseconds": 5000 },
+            { "label": qsTr("10 seconds"), "milliseconds": 10000 },
+            { "label": qsTr("15 seconds"), "milliseconds": 15000 },
+            { "label": qsTr("30 seconds"), "milliseconds": 30000 },
+            { "label": qsTr("60 seconds"), "milliseconds": 60000 }
+        ]
+        currentIndex: configPage.optionIndex(configPage.cfg_filesystemRefreshIntervalMs,
+                                             [5000, 10000, 15000, 30000, 60000], 2)
+        onActivated: configPage.cfg_filesystemRefreshIntervalMs = currentValue
+    }
+
+    QtControls.ComboBox {
+        Kirigami.FormData.label: qsTr("Filesystem rows:")
         textRole: "label"
         valueRole: "count"
         model: [
+            { "label": "1", "count": 1 },
+            { "label": "2", "count": 2 },
             { "label": "3", "count": 3 },
             { "label": "4", "count": 4 },
             { "label": "5", "count": 5 }
         ]
-        currentIndex: configPage.optionIndex(configPage.cfg_maximumProcessEntries,
-                                             [3, 4, 5], 2)
-        onActivated: configPage.cfg_maximumProcessEntries = currentValue
-        Accessible.name: qsTr("Maximum displayed process entries")
+        currentIndex: configPage.optionIndex(configPage.cfg_maximumFilesystemEntries,
+                                             [1, 2, 3, 4, 5], 2)
+        onActivated: configPage.cfg_maximumFilesystemEntries = currentValue
+    }
+
+    Kirigami.Heading {
+        Kirigami.FormData.isSection: true
+        level: 3
+        text: qsTr("Appearance")
+    }
+
+    QtControls.CheckBox {
+        id: themeBackground
+        text: qsTr("Use Plasma theme background")
+    }
+
+    QtControls.SpinBox {
+        Kirigami.FormData.label: qsTr("Background opacity:")
+        from: 35
+        to: 100
+        stepSize: 5
+        value: Math.round(Configuration.opacity(configPage.cfg_backgroundOpacity) * 100)
+        textFromValue: function(value) { return value + "%"; }
+        valueFromText: function(text) {
+            var number = parseInt(text, 10);
+            return isFinite(number) ? number : 100;
+        }
+        onValueModified: configPage.cfg_backgroundOpacity = value / 100
+    }
+
+    QtControls.TextField {
+        id: customColor
+        Kirigami.FormData.label: qsTr("Custom background:")
+        enabled: !themeBackground.checked
+        maximumLength: 9
+        placeholderText: Configuration.DEFAULT_BACKGROUND_COLOR
+        selectByMouse: true
+        onEditingFinished: text = Configuration.color(text,
+                                                       Configuration.DEFAULT_BACKGROUND_COLOR)
+        Accessible.name: qsTr("Custom background color in hexadecimal notation")
     }
 }

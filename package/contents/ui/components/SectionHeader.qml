@@ -14,6 +14,7 @@ RowLayout {
     property string title: ""
     property string iconName: ""
     property bool showIcon: true
+    property bool showLabel: true
     property string statusText: ""
 
     spacing: PlasmaCore.Units.smallSpacing
@@ -26,6 +27,7 @@ RowLayout {
     }
 
     PlasmaComponents.Label {
+        visible: header.showLabel
         Layout.fillWidth: true
         text: header.title
         color: PlasmaCore.Theme.textColor

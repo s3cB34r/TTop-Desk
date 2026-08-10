@@ -18,6 +18,7 @@ Item {
     property bool showTemperature: true
     property bool showMetricIcons: true
     property bool compactModeDetails: false
+    property string widgetTitle: "TTop Desk"
     property int formFactor: PlasmaCore.Types.Planar
 
     readonly property bool vertical: formFactor === PlasmaCore.Types.Vertical
@@ -229,7 +230,7 @@ Item {
 
             PlasmaComponents.Label {
                 Layout.fillWidth: true
-                text: qsTr("TTop Desk")
+                text: compactView.widgetTitle
                 color: PlasmaCore.Theme.textColor
                 elide: Text.ElideRight
             }

@@ -15,6 +15,8 @@ RowLayout {
     property string processName: ""
     property real cpuPercent: NaN
     property real memoryBytes: NaN
+    property bool showCpu: true
+    property bool showMemory: true
 
     spacing: PlasmaCore.Units.smallSpacing
 
@@ -26,6 +28,7 @@ RowLayout {
     }
 
     PlasmaComponents.Label {
+        objectName: "processName"
         Layout.fillWidth: true
         Layout.minimumWidth: 0
         text: row.processName
@@ -35,6 +38,8 @@ RowLayout {
     }
 
     PlasmaComponents.Label {
+        objectName: "processCpu"
+        visible: row.showCpu
         Layout.preferredWidth: PlasmaCore.Units.gridUnit * 3.5
         Layout.maximumWidth: Layout.preferredWidth
         horizontalAlignment: Text.AlignRight
@@ -45,6 +50,8 @@ RowLayout {
     }
 
     PlasmaComponents.Label {
+        objectName: "processMemory"
+        visible: row.showMemory
         Layout.preferredWidth: PlasmaCore.Units.gridUnit * 4.2
         Layout.maximumWidth: Layout.preferredWidth
         horizontalAlignment: Text.AlignRight
@@ -54,4 +61,3 @@ RowLayout {
         elide: Text.ElideLeft
     }
 }
-

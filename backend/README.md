@@ -146,7 +146,9 @@ valid CPU-time sample is available. Subsequent values are CPU-time deltas over
 monotonic elapsed time and are not clamped to 100%.
 
 The widget requests `{"command":"processes","sort":"cpu","limit":5}` every
-two seconds by default and discards `username` before exposing its QML model.
+two seconds by default. Milestone 1.11 substitutes the live configured CPU or
+memory sort mode and exact visible limit of 3–5 rows. It discards `username`
+before exposing its QML model.
 It automatically falls back to `snapshot` when an older protocol-v1 backend
 rejects the newer command. A stopped backend clears process rows
 and changes only that section to `Backend unavailable`; reconnect attempts use

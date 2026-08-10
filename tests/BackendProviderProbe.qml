@@ -33,7 +33,7 @@ Item {
         id: provider
         enabled: true
         autoPoll: false
-        maximumProcessEntries: 3
+        maximumProcessEntries: 5
         socketClient: fakeSocketClient
     }
 
@@ -42,13 +42,60 @@ Item {
         running: true
         repeat: false
         onTriggered: {
+            provider.refreshIntervalMs = 1000;
+            if (provider.effectiveRefreshIntervalMs !== 1000) {
+                fail("process refresh interval did not update live");
+            }
+            provider.refreshIntervalMs = 0;
+            if (provider.effectiveRefreshIntervalMs !== 2000) {
+                fail("invalid process refresh interval did not use its default");
+            }
+            provider.refreshIntervalMs = 2000;
+
             provider.requestProcesses();
             var boundedRequest = JSON.parse(fakeSocketClient.requests.shift());
             if (boundedRequest.command !== "processes"
                     || boundedRequest.sort !== "cpu"
-                    || boundedRequest.limit !== 3) {
+                    || boundedRequest.limit !== 5) {
                 fail("bounded process request is incorrect");
             }
+
+            provider.maximumProcessEntries = 3;
+            provider.requestProcesses();
+            if (JSON.parse(fakeSocketClient.requests.shift()).limit !== 3) {
+                fail("process limit 3 was not applied");
+            }
+            provider.processSortMode = "memory";
+            provider.maximumProcessEntries = 4;
+            provider.requestProcesses();
+            var memoryRequest = JSON.parse(fakeSocketClient.requests.shift());
+            if (memoryRequest.sort !== "memory" || memoryRequest.limit !== 4) {
+                fail("live process sort or limit was not applied");
+            }
+            provider.handleResponse(JSON.stringify({
+                "status": "ok",
+                "version": 1,
+                "sort": "memory",
+                "limit": 4,
+                "processes": [
+                    { "pid": 2, "name": "small", "memoryBytes": 20 },
+                    { "pid": 1, "name": "large", "memoryBytes": 100 }
+                ]
+            }));
+            if (provider.processEntries[0].pid !== 1
+                    || provider.processEntries[0].cpuPercent !== undefined) {
+                fail("memory sorting or CPU warm-up handling is incorrect");
+            }
+
+            provider.processSortMode = "cpu";
+            provider.maximumProcessEntries = 5;
+            provider.requestProcesses();
+            if (JSON.parse(fakeSocketClient.requests.shift()).limit !== 5) {
+                fail("process limit 5 was not restored");
+            }
+            provider.maximumProcessEntries = 3;
+            provider.requestProcesses();
+            fakeSocketClient.requests.shift();
 
             provider.handleResponse(JSON.stringify({
                 "status": "error",
@@ -86,6 +133,13 @@ Item {
             if (provider.processEntries[0].username !== undefined
                     || provider.processEntries[0].cmdline !== undefined) {
                 fail("private or unapproved fields crossed the provider boundary");
+            }
+            var requestCount = fakeSocketClient.requests.length;
+            provider.enabled = false;
+            provider.requestProcesses();
+            if (fakeSocketClient.requests.length !== requestCount
+                    || provider.processCount !== 0) {
+                fail("disabled process section continued requesting or retained rows");
             }
             console.log("TTop Desk backend provider probe: PASS");
             Qt.quit();
