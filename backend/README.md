@@ -2,8 +2,9 @@
 
 This directory contains the minimal local backend foundation for metrics that
 KDE Plasma 5 cannot expose directly. Current CPU, RAM, network, temperature,
-filesystem, and disk-I/O metrics remain Plasma-native. The backend is not yet
-connected to the production widget.
+filesystem, and disk-I/O metrics remain Plasma-native. Milestone 1.9 connects
+the backend's process snapshot to the full widget through a persistent
+in-process Qt `QLocalSocket` bridge; the backend is still started manually.
 
 ## Architecture
 
@@ -60,6 +61,13 @@ python3 -m ttop_backend.main --debug
 In another terminal:
 
 ```bash
+./scripts/build-bridge.sh
+plasmoidviewer -a "$(pwd)/package"
+```
+
+The development JSON client remains available separately:
+
+```bash
 python3 scripts/backend-client.py
 ```
 
@@ -100,3 +108,8 @@ open files, or sockets. A newly observed PID has no `cpuPercent` until a second
 valid CPU-time sample is available. Subsequent values are CPU-time deltas over
 monotonic elapsed time and are not clamped to 100%.
 
+The widget requests the existing `{"command":"snapshot"}` response every two
+seconds by default, selects at most five CPU-ranked entries, and discards
+`username` before exposing its QML model. A stopped backend clears process rows
+and changes only that section to `Backend unavailable`; reconnect attempts use
+a five-second backoff. No process action is supported.

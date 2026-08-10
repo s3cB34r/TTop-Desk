@@ -17,17 +17,25 @@ Kirigami.FormLayout {
     property alias cfg_showTemperature: showTemperatureCheckBox.checked
     property alias cfg_showFilesystems: showFilesystemsCheckBox.checked
     property alias cfg_showDiskIo: showDiskIoCheckBox.checked
+    property alias cfg_showProcesses: showProcessesCheckBox.checked
     property alias cfg_showHeader: showHeaderCheckBox.checked
     property alias cfg_showMetricIcons: showMetricIconsCheckBox.checked
     property alias cfg_compactModeDetails: compactDetailsCheckBox.checked
     property int cfg_refreshIntervalMs: 1000
     property alias cfg_filesystemRefreshIntervalMs: filesystemIntervalSpinBox.value
     property alias cfg_maximumFilesystemEntries: filesystemEntriesSpinBox.value
+    property int cfg_maximumProcessEntries: 5
+    property int cfg_processRefreshIntervalMs: 2000
 
     function refreshIndex(value) {
         var options = [500, 1000, 2000, 5000];
         var index = options.indexOf(Number(value));
         return index >= 0 ? index : 1;
+    }
+
+    function optionIndex(value, options, fallbackIndex) {
+        var index = options.indexOf(Number(value));
+        return index >= 0 ? index : fallbackIndex;
     }
 
     Kirigami.Heading {
@@ -65,6 +73,11 @@ Kirigami.FormLayout {
     QtControls.CheckBox {
         id: showDiskIoCheckBox
         text: qsTr("Disk read/write throughput")
+    }
+
+    QtControls.CheckBox {
+        id: showProcessesCheckBox
+        text: qsTr("Top processes")
     }
 
     Kirigami.Heading {
@@ -130,6 +143,23 @@ Kirigami.FormLayout {
         Accessible.name: qsTr("Filesystem refresh interval in seconds")
     }
 
+    QtControls.ComboBox {
+        id: processIntervalComboBox
+        Kirigami.FormData.label: qsTr("Processes:")
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 9
+        textRole: "label"
+        valueRole: "milliseconds"
+        model: [
+            { "label": qsTr("1 second"), "milliseconds": 1000 },
+            { "label": qsTr("2 seconds"), "milliseconds": 2000 },
+            { "label": qsTr("5 seconds"), "milliseconds": 5000 }
+        ]
+        currentIndex: configPage.optionIndex(configPage.cfg_processRefreshIntervalMs,
+                                             [1000, 2000, 5000], 1)
+        onActivated: configPage.cfg_processRefreshIntervalMs = currentValue
+        Accessible.name: qsTr("Process refresh interval")
+    }
+
     QtControls.SpinBox {
         id: filesystemEntriesSpinBox
         Kirigami.FormData.label: qsTr("Filesystem rows:")
@@ -138,5 +168,21 @@ Kirigami.FormLayout {
         stepSize: 1
         editable: true
         Accessible.name: qsTr("Maximum displayed filesystem entries")
+    }
+
+    QtControls.ComboBox {
+        id: processEntriesComboBox
+        Kirigami.FormData.label: qsTr("Process rows:")
+        textRole: "label"
+        valueRole: "count"
+        model: [
+            { "label": "3", "count": 3 },
+            { "label": "4", "count": 4 },
+            { "label": "5", "count": 5 }
+        ]
+        currentIndex: configPage.optionIndex(configPage.cfg_maximumProcessEntries,
+                                             [3, 4, 5], 2)
+        onActivated: configPage.cfg_maximumProcessEntries = currentValue
+        Accessible.name: qsTr("Maximum displayed process entries")
     }
 }

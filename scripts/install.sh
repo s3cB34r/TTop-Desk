@@ -4,4 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
+"${SCRIPT_DIR}/build-bridge.sh"
+
 exec kpackagetool5 --type Plasma/Applet --install "${REPOSITORY_ROOT}/package"

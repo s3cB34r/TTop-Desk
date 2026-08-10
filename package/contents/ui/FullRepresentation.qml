@@ -11,14 +11,17 @@ import "components" as Components
 
 Rectangle {
     id: fullView
+    objectName: "fullRepresentation"
 
     property var metricsProvider
+    property var backendProvider
     property bool showCpu: true
     property bool showMemory: true
     property bool showNetwork: true
     property bool showTemperature: true
     property bool showFilesystems: true
     property bool showDiskIo: true
+    property bool showProcesses: true
     property bool showHeader: true
     property bool showMetricIcons: true
 
@@ -43,6 +46,7 @@ Rectangle {
 
     ColumnLayout {
         id: content
+        objectName: "fullContent"
 
         anchors.left: parent.left
         anchors.right: parent.right
@@ -130,6 +134,7 @@ Rectangle {
         }
 
         ColumnLayout {
+            objectName: "filesystemSection"
             visible: fullView.showFilesystems
             Layout.fillWidth: true
             spacing: PlasmaCore.Units.smallSpacing
@@ -157,10 +162,19 @@ Rectangle {
             }
         }
 
+        Components.ProcessList {
+            objectName: "processSection"
+            visible: fullView.showProcesses
+            Layout.fillWidth: true
+            backendProvider: fullView.backendProvider
+            showIcon: fullView.showMetricIcons
+        }
+
         PlasmaComponents.Label {
             visible: !fullView.showCpu && !fullView.showMemory
                      && !fullView.showNetwork && !fullView.showTemperature
                      && !fullView.showFilesystems && !fullView.showDiskIo
+                     && !fullView.showProcesses
             Layout.fillWidth: true
             text: qsTr("All metric sections are hidden. Open the widget settings to choose what to display.")
             color: PlasmaCore.Theme.disabledTextColor

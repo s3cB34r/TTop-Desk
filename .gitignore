@@ -19,6 +19,9 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 
+# Locally built QML bridge
+package/contents/ui/TTop/Backend/libttopbackendplugin.so
+
 # Temporary files
 *.log
 *.tmp

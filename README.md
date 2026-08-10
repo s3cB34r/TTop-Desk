@@ -4,9 +4,15 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.8 adds a minimal local backend foundation for advanced metrics
-that Plasma 5 cannot provide. It is backend-only and is not connected to the
-visible widget yet; all existing metrics and layouts remain Plasma-native.
+Milestone 1.9 completes the first backend-to-widget path with a read-only
+**TOP PROCESSES** section in the full representation. It shows up to five
+CPU-sorted processes with one-decimal CPU usage and resident memory, refreshes
+every two seconds by default, and becomes `Backend unavailable` without
+affecting Plasma-native metrics when the local backend is stopped.
+
+Milestone 1.8 added the minimal local backend foundation for advanced metrics
+that Plasma 5 cannot provide. Existing CPU, RAM, network, temperature,
+filesystem, and disk-I/O metrics remain Plasma-native and independent.
 
 Milestone 1.7a added a development-only process sensor capability probe and a
 defensive normalization provider. There is no visible process UI yet, and the
@@ -44,8 +50,9 @@ For direct development and installation, the system needs:
 - KDE Plasma 5 and the Plasma Framework runtime
 - `plasmoidviewer` from the Plasma SDK (`plasma-sdk` on Ubuntu-family systems)
 - `kpackagetool5` from the Plasma Framework tools
-- CMake and `extra-cmake-modules` only when using the CMake installation path
-- Plasma 5 development files (commonly `libkf5plasma-dev`) only for CMake setup
+- CMake, a C++ compiler, Qt 5 Core/QML/Network development files, and
+  `extra-cmake-modules` to build the small Unix-socket QML bridge
+- Plasma 5 development files (commonly `libkf5plasma-dev`)
 
 Package names can vary between distributions. This repository does not install
 or modify system packages.
@@ -64,6 +71,11 @@ safe values from 5 to 60 seconds, and the maximum number of filesystem rows can
 be set from 1 to 10. **Show network and temperature details** adds those values
 to the compact representation when their sections are enabled.
 
+The read-only process section can also be hidden. It displays 3, 4, or 5 rows
+and can refresh every 1, 2, or 5 seconds. It is always sorted by CPU descending
+with process name and PID tie-breakers. CPU values are not clamped to 100%, and
+memory is resident set size formatted in MiB or GiB.
+
 In a panel, the compact representation prioritizes CPU and RAM percentages.
 It lays values out in a row for horizontal panels and stacks them for vertical
 panels where practical. Filesystem rows and detailed disk I/O are deliberately
@@ -76,6 +88,16 @@ by the configured entry limit.
 
 ## Test locally
 
+First start the backend in terminal 1:
+
+```bash
+cd backend
+python3 -m ttop_backend.main --debug
+```
+
+Then build the persistent Qt Unix-socket bridge and launch the widget in
+terminal 2:
+
 Run the widget directly from the repository:
 
 ```bash
@@ -85,8 +107,14 @@ Run the widget directly from the repository:
 The equivalent direct command is:
 
 ```bash
+./scripts/build-bridge.sh
 plasmoidviewer -a "$(pwd)/package"
 ```
+
+The widget does not start or manage the backend. If it is absent, starting, or
+stopped, only **TOP PROCESSES** changes state; every existing metric continues
+to use Plasma. Unavailable connections retry after five seconds rather than in
+a tight loop.
 
 ### Metric discovery debugging
 
@@ -287,14 +315,23 @@ array/map/nested-map normalization, PID deduplication, and stale per-process
 record expiry. The development probe lives under `tests/` and is not installed
 with the widget package.
 
-Milestone 1.8 introduces a minimal local, read-only TTop backend foundation for
+Milestone 1.8 introduced a minimal local, read-only TTop backend foundation for
 advanced metrics that Plasma 5 cannot provide. Process monitoring is its first
 data source; future advanced sensors can extend the versioned protocol without
 replacing working Plasma-native metrics. It communicates only through a
 restrictive per-user Unix-domain socket, opens no network ports, needs no
-elevated permissions, and is not yet integrated into production QML. Backend
-architecture, protocol, manual commands, and privacy details are documented in
+elevated permissions. Milestone 1.9 connects it through a small in-process Qt
+5 `QLocalSocket` QML bridge. The bridge sends the existing protocol-v1
+`snapshot` request; it never launches Python or another process and never opens
+a TCP port. `BackendProvider.qml` validates, CPU-sorts, deterministically
+tie-breaks, and bounds the display model before the full representation reads
+it. Backend architecture, protocol, manual commands, and privacy details are documented in
 [`backend/README.md`](backend/README.md).
+
+The UI receives only PID, process name, CPU percentage, and RSS bytes. Username
+may exist in the backend snapshot but is intentionally discarded at the QML
+provider boundary. Command lines, environments, paths, files, and connections
+are never requested or displayed.
 
 Legacy `mem/physical/*` values without unit metadata are assumed to be KiB,
 matching Plasma 5's KSysGuard sensor convention. Explicit unit metadata always

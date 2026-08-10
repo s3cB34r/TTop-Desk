@@ -24,6 +24,9 @@
     <entry name="showDiskIo" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="showProcesses" type="Bool">
+      <default>true</default>
+    </entry>
     <entry name="showHeader" type="Bool">
       <default>true</default>
     </entry>
@@ -41,6 +44,12 @@
     </entry>
     <entry name="maximumFilesystemEntries" type="Int">
       <default>3</default>
+    </entry>
+    <entry name="maximumProcessEntries" type="Int">
+      <default>5</default>
+    </entry>
+    <entry name="processRefreshIntervalMs" type="Int">
+      <default>2000</default>
     </entry>
   </group>
 </kcfg>
