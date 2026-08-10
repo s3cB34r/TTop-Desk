@@ -4,7 +4,11 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
-Milestone 1.7a adds a development-only process sensor capability probe and a
+Milestone 1.8 adds a minimal local backend foundation for advanced metrics
+that Plasma 5 cannot provide. It is backend-only and is not connected to the
+visible widget yet; all existing metrics and layouts remain Plasma-native.
+
+Milestone 1.7a added a development-only process sensor capability probe and a
 defensive normalization provider. There is no visible process UI yet, and the
 existing widget layout is unchanged. Process availability depends entirely on
 what the Plasma 5 system-monitor sensors expose on the host; no external
@@ -26,8 +30,8 @@ temperature is formatted in degrees Celsius.
 
 TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
 5's native `ksystemstats` sensor API when a distribution ships the legacy
-DataEngine without its former backend. There is no Python backend or external
-runtime dependency.
+DataEngine without its former backend. These current production metrics remain
+Plasma-native and do not depend on the optional local backend foundation.
 
 SMART data, GPU monitoring, disk temperatures, and visible process metrics
 remain future milestones, as does integration with a shared TTop Core backend.
@@ -282,6 +286,15 @@ for Milestone 1.7a. It performs bounded startup/recovery discovery, defensive
 array/map/nested-map normalization, PID deduplication, and stale per-process
 record expiry. The development probe lives under `tests/` and is not installed
 with the widget package.
+
+Milestone 1.8 introduces a minimal local, read-only TTop backend foundation for
+advanced metrics that Plasma 5 cannot provide. Process monitoring is its first
+data source; future advanced sensors can extend the versioned protocol without
+replacing working Plasma-native metrics. It communicates only through a
+restrictive per-user Unix-domain socket, opens no network ports, needs no
+elevated permissions, and is not yet integrated into production QML. Backend
+architecture, protocol, manual commands, and privacy details are documented in
+[`backend/README.md`](backend/README.md).
 
 Legacy `mem/physical/*` values without unit metadata are assumed to be KiB,
 matching Plasma 5's KSysGuard sensor convention. Explicit unit metadata always
