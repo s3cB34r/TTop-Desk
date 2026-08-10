@@ -56,6 +56,7 @@ def main() -> int:
     mode.add_argument(
         "--processes", type=int, metavar="LIMIT", help="request a bounded process list"
     )
+    mode.add_argument("--gpu", action="store_true", help="request GPU metrics")
     parser.add_argument("--sort", choices=("cpu", "memory"), default="cpu")
     arguments = parser.parse_args()
     socket_path = Path(arguments.socket).expanduser() if arguments.socket else default_socket_path()
@@ -67,6 +68,8 @@ def main() -> int:
             "processes",
             {"command": "processes", "sort": arguments.sort, "limit": arguments.processes},
         )]
+    elif arguments.gpu:
+        requests = [("gpu", {"command": "gpu"})]
     else:
         requests = [
             ("ping", {"command": "ping"}),

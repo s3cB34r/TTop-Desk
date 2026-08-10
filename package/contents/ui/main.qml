@@ -24,6 +24,7 @@ Item {
     readonly property bool showFilesystems: Plasmoid.configuration.showFilesystems
     readonly property bool showDiskIo: Plasmoid.configuration.showDiskIo
     readonly property bool showProcesses: Plasmoid.configuration.showProcesses
+    readonly property bool showGpu: Plasmoid.configuration.showGpu
     readonly property bool showHeader: Plasmoid.configuration.showHeader
     readonly property bool showMetricIcons: Plasmoid.configuration.showMetricIcons
     readonly property bool showSectionLabels: Plasmoid.configuration.showSectionLabels
@@ -33,6 +34,10 @@ Item {
         Plasmoid.configuration.showFilesystemProgressBars
     readonly property bool showProcessCpu: Plasmoid.configuration.showProcessCpu
     readonly property bool showProcessMemory: Plasmoid.configuration.showProcessMemory
+    readonly property bool showGpuUtilization: Plasmoid.configuration.showGpuUtilization
+    readonly property bool showGpuMemory: Plasmoid.configuration.showGpuMemory
+    readonly property bool showGpuTemperature: Plasmoid.configuration.showGpuTemperature
+    readonly property bool showGpuProgressBars: Plasmoid.configuration.showGpuProgressBars
     readonly property bool showNetworkRx: Plasmoid.configuration.showNetworkRx
     readonly property bool showNetworkTx: Plasmoid.configuration.showNetworkTx
     readonly property bool showDiskRead: Plasmoid.configuration.showDiskRead
@@ -64,6 +69,9 @@ Item {
                                      [1000, 2000, 5000], 2000)
     readonly property string safeProcessSortMode:
         Configuration.processSort(Plasmoid.configuration.processSortMode)
+    readonly property int safeGpuRefreshIntervalMs:
+        Configuration.allowedInteger(Plasmoid.configuration.gpuRefreshIntervalMs,
+                                     [500, 1000, 2000, 5000], 1000)
 
     function validRefreshInterval(value) {
         return Configuration.allowedInteger(value, [500, 1000, 2000, 5000], 1000);
@@ -88,11 +96,14 @@ Item {
     BackendProvider {
         id: backend
 
-        enabled: root.showProcesses
+        enabled: root.showProcesses || root.showGpu
+        processesEnabled: root.showProcesses
+        gpuEnabled: root.showGpu
         debugBackend: root.debugBackend
         refreshIntervalMs: root.safeProcessRefreshIntervalMs
         maximumProcessEntries: root.safeMaximumProcessEntries
         processSortMode: root.safeProcessSortMode
+        gpuRefreshIntervalMs: root.safeGpuRefreshIntervalMs
     }
 
     Component {
@@ -106,6 +117,8 @@ Item {
             showTemperature: root.showTemperature
             showMetricIcons: root.showMetricIcons
             compactModeDetails: root.compactModeDetails
+            backendProvider: backend
+            showGpu: root.showGpu
             widgetTitle: root.widgetTitle
             formFactor: Plasmoid.formFactor
         }
@@ -124,6 +137,7 @@ Item {
             showFilesystems: root.showFilesystems
             showDiskIo: root.showDiskIo
             showProcesses: root.showProcesses
+            showGpu: root.showGpu
             showHeader: root.showHeader
             showMetricIcons: root.showMetricIcons
             showSectionLabels: root.showSectionLabels
@@ -132,6 +146,10 @@ Item {
             showFilesystemProgressBars: root.showFilesystemProgressBars
             showProcessCpu: root.showProcessCpu
             showProcessMemory: root.showProcessMemory
+            showGpuUtilization: root.showGpuUtilization
+            showGpuMemory: root.showGpuMemory
+            showGpuTemperature: root.showGpuTemperature
+            showGpuProgressBars: root.showGpuProgressBars
             showNetworkRx: root.showNetworkRx
             showNetworkTx: root.showNetworkTx
             showDiskRead: root.showDiskRead

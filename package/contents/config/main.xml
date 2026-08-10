@@ -30,6 +30,9 @@
     <entry name="showProcesses" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="showGpu" type="Bool">
+      <default>true</default>
+    </entry>
     <entry name="showHeader" type="Bool">
       <default>true</default>
     </entry>
@@ -52,6 +55,18 @@
       <default>true</default>
     </entry>
     <entry name="showProcessMemory" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showGpuUtilization" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showGpuMemory" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showGpuTemperature" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showGpuProgressBars" type="Bool">
       <default>true</default>
     </entry>
     <entry name="showNetworkRx" type="Bool">
@@ -92,6 +107,9 @@
     </entry>
     <entry name="processRefreshIntervalMs" type="Int">
       <default>2000</default>
+    </entry>
+    <entry name="gpuRefreshIntervalMs" type="Int">
+      <default>1000</default>
     </entry>
     <entry name="backgroundOpacity" type="Double">
       <default>1.0</default>

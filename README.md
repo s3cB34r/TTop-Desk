@@ -4,6 +4,13 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
+Milestone 1.12 adds backend-powered NVIDIA GPU monitoring through a minimal
+read-only `ctypes` binding to `libnvidia-ml.so.1`. The full representation
+shows GPU utilization, VRAM used/total and percentage, GPU temperature, and
+the model name. Multiple NVIDIA devices are represented by the backend; the
+widget displays index 0 by default. No `nvidia-smi` polling or new Python
+package is required.
+
 Milestone 1.11 adds live, persistent customization for the widget title,
 section and sub-element visibility, process sorting and row limits, refresh
 intervals, spacing, and theme-aware background appearance. Everything remains
@@ -84,6 +91,10 @@ receive/transmit and disk read/write values can also be selected separately.
 Process CPU and RSS columns are optional; if both are hidden, process names
 remain visible. Hidden sections and controls contribute no layout height.
 
+GPU display is enabled by default. GPU utilization, VRAM, temperature, and GPU
+progress bars can be hidden independently, and its refresh interval can be
+500 ms, 1, 2, or 5 seconds. Compact details optionally add only GPU utilization.
+
 The read-only process section displays 3, 4, or 5 rows, refreshes every 1, 2,
 or 5 seconds, and can sort by CPU or resident memory. The provider sends the
 selected sort and exact visible limit in its bounded backend request. CPU values
@@ -99,6 +110,11 @@ set from 35% to 100% in 5% steps. Turning off the theme background enables a
 validated hexadecimal custom color; normal text continues to use Plasma theme
 colors for light/dark compatibility. All changes apply live without restarting
 Plasma or the backend.
+
+When the backend socket is unavailable, GPU and Top Processes report
+`Backend unavailable` while Plasma-native metrics keep updating. When the
+backend is connected but NVML, the NVIDIA driver, or a supported device is not
+available, only the GPU section reports `GPU unavailable`.
 
 Example configurations:
 
@@ -387,6 +403,11 @@ never opens a TCP port. `BackendProvider.qml` validates, metric-sorts, determini
 tie-breaks, and bounds the display model before the full representation reads
 it. Backend architecture, protocol, manual commands, and privacy details are documented in
 [`backend/README.md`](backend/README.md).
+
+GPU requests use `{"command":"gpu"}` on the same socket bridge. The backend
+owns one provider instance, initializes NVML once, and shuts it down when the
+backend exits. NVIDIA is the only implemented provider; the boundary can
+accommodate AMD or Intel implementations in a future milestone.
 
 The UI receives only PID, process name, CPU percentage, and RSS bytes. Username
 may exist in the backend snapshot but is intentionally discarded at the QML

@@ -70,6 +70,23 @@ class ProtocolTests(unittest.TestCase):
         )
         self.assertEqual(response["error"], "invalid_request")
 
+    def test_gpu_command_is_versioned(self) -> None:
+        response = handle_request(
+            b'{"command":"gpu"}',
+            lambda: {},
+            None,
+            lambda: {"status": "ok", "gpus": [{"index": 0}]},
+        )
+        self.assertEqual(response["status"], "ok")
+        self.assertEqual(response["version"], PROTOCOL_VERSION)
+        self.assertEqual(response["gpus"], [{"index": 0}])
+
+    def test_gpu_rejects_extra_properties(self) -> None:
+        response = handle_request(
+            b'{"command":"gpu","index":0}', lambda: {}, None, lambda: {}
+        )
+        self.assertEqual(response["error"], "invalid_request")
+
     def test_malformed_json_is_safe(self) -> None:
         response = handle_request(b"{broken", lambda: {})
         self.assertEqual(response["status"], "error")

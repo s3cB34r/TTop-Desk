@@ -67,6 +67,12 @@ Item {
     QtObject {
         id: backend
         property string backendState: "connected"
+        property string gpuState: "unavailable"
+        property string gpuName: ""
+        property real gpuUtilizationPercent: NaN
+        property real gpuMemoryPercent: NaN
+        property string gpuMemoryDisplayText: ""
+        property string gpuTemperatureDisplayText: ""
         property int processCount: processEntries.length
         property var processEntries: [
             { "pid": 1, "name": "an-intentionally-extremely-long-process-name-that-must-be-elided", "cpuPercent": 135.6, "memoryBytes": 1825361101 },
@@ -84,6 +90,7 @@ Item {
         width: implicitWidth
         height: implicitHeight
         showProcesses: true
+        showGpu: false
     }
 
     Timer {
@@ -138,4 +145,3 @@ Item {
         }
     }
 }
-

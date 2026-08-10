@@ -15,7 +15,9 @@ Item {
         "all", "systemTitle", "longTitle", "onlyCpu", "onlyProcesses", "cpuRam",
         "headerOnly", "headerDisabled", "noProcesses", "noFilesystems",
         "iconsDisabled", "progressDisabled", "processNameOnly",
-        "subElements", "labelsDisabled", "dense", "allHidden", "appearance"
+        "subElements", "labelsDisabled", "dense", "gpuDisabled", "onlyGpu",
+        "gpuUtilizationOnly", "gpuMemoryOnly", "gpuTemperatureOnly", "gpuNoBars",
+        "processesGpu", "filesystemsGpu", "allHidden", "appearance"
     ]
     property int caseIndex: 0
     property real allHeight: 0
@@ -57,6 +59,7 @@ Item {
         card.showDiskIo = value;
         card.showFilesystems = value;
         card.showProcesses = value;
+        card.showGpu = value;
     }
 
     function resetPresentation() {
@@ -69,6 +72,10 @@ Item {
         card.showFilesystemProgressBars = true;
         card.showProcessCpu = true;
         card.showProcessMemory = true;
+        card.showGpuUtilization = true;
+        card.showGpuMemory = true;
+        card.showGpuTemperature = true;
+        card.showGpuProgressBars = true;
         card.showNetworkRx = true;
         card.showNetworkTx = true;
         card.showDiskRead = true;
@@ -106,6 +113,7 @@ Item {
             card.showCpuProgressBar = false;
             card.showMemoryProgressBar = false;
             card.showFilesystemProgressBars = false;
+            card.showGpuProgressBars = false;
         } else if (name === "processNameOnly") {
             card.showProcessCpu = false;
             card.showProcessMemory = false;
@@ -121,6 +129,28 @@ Item {
         } else if (name === "dense") {
             card.compactSpacing = true;
             card.denseMode = true;
+        } else if (name === "gpuDisabled") {
+            card.showGpu = false;
+        } else if (name === "onlyGpu") {
+            setSections(false); card.showHeader = false; card.showGpu = true;
+        } else if (name === "gpuUtilizationOnly") {
+            setSections(false); card.showHeader = false; card.showGpu = true;
+            card.showGpuMemory = false; card.showGpuTemperature = false;
+        } else if (name === "gpuMemoryOnly") {
+            setSections(false); card.showHeader = false; card.showGpu = true;
+            card.showGpuUtilization = false; card.showGpuTemperature = false;
+        } else if (name === "gpuTemperatureOnly") {
+            setSections(false); card.showHeader = false; card.showGpu = true;
+            card.showGpuUtilization = false; card.showGpuMemory = false;
+        } else if (name === "gpuNoBars") {
+            setSections(false); card.showHeader = false; card.showGpu = true;
+            card.showGpuProgressBars = false;
+        } else if (name === "processesGpu") {
+            setSections(false); card.showHeader = false;
+            card.showProcesses = true; card.showGpu = true;
+        } else if (name === "filesystemsGpu") {
+            setSections(false); card.showHeader = false;
+            card.showFilesystems = true; card.showGpu = true;
         } else if (name === "allHidden") {
             setSections(false); card.showHeader = false;
         } else if (name === "appearance") {
@@ -135,15 +165,21 @@ Item {
         var memory = findByObjectName(card, "memorySection");
         var filesystem = findByObjectName(card, "filesystemSection");
         var processes = findByObjectName(card, "processSection");
+        var gpu = findByObjectName(card, "gpuSection");
         var header = findByObjectName(card, "headerSection");
         if (name === "all") {
             allHeight = card.implicitHeight;
             allWidth = card.implicitWidth;
-            if (!cpu.visible || !memory.visible || !filesystem.visible || !processes.visible) {
+            if (!cpu.visible || !memory.visible || !filesystem.visible
+                    || !processes.visible || !gpu.visible) {
                 fail("default sections are not all visible");
             }
-            if (!bottomInsideCard(filesystem) || !bottomInsideCard(processes)) {
+            if (!bottomInsideCard(filesystem) || !bottomInsideCard(processes)
+                    || !bottomInsideCard(gpu)) {
                 fail("default rows exceed card bounds");
+            }
+            if (findByObjectName(card, "gpuName").width > gpu.width) {
+                fail("long GPU name exceeded section width");
             }
         } else if (name === "systemTitle") {
             if (findByObjectName(card, "widgetTitleLabel").text !== "System Monitor") {
@@ -207,6 +243,38 @@ Item {
             }
         } else if (name === "dense") {
             if (card.implicitHeight > allHeight) fail("dense spacing increased card height");
+        } else if (name === "gpuDisabled") {
+            if (gpu.visible || card.implicitHeight >= allHeight) fail("GPU section retained height");
+        } else if (name === "onlyGpu") {
+            if (!gpu.visible || cpu.visible || processes.visible || filesystem.visible) {
+                fail("only-GPU visibility is incorrect");
+            }
+            if (!bottomInsideCard(gpu)) fail("GPU-only content exceeds card");
+        } else if (name === "gpuUtilizationOnly") {
+            if (!gpu.showUtilization || gpu.showMemory || gpu.showTemperature) {
+                fail("GPU utilization-only layout is incorrect");
+            }
+        } else if (name === "gpuMemoryOnly") {
+            if (gpu.showUtilization || !gpu.showMemory || gpu.showTemperature) {
+                fail("GPU memory-only layout is incorrect");
+            }
+        } else if (name === "gpuTemperatureOnly") {
+            if (gpu.showUtilization || gpu.showMemory || !gpu.showTemperature) {
+                fail("GPU temperature-only layout is incorrect");
+            }
+        } else if (name === "gpuNoBars") {
+            if (visibleObjectCount(card, "gpuUtilizationProgressBar") !== 0
+                    || visibleObjectCount(card, "gpuMemoryProgressBar") !== 0) {
+                fail("disabled GPU progress bars remained visible");
+            }
+        } else if (name === "processesGpu") {
+            if (!processes.visible || !gpu.visible || !bottomInsideCard(processes)) {
+                fail("processes + GPU layout is incorrect");
+            }
+        } else if (name === "filesystemsGpu") {
+            if (!filesystem.visible || !gpu.visible || !bottomInsideCard(filesystem)) {
+                fail("filesystems + GPU layout is incorrect");
+            }
         } else if (name === "allHidden") {
             var content = findByObjectName(card, "fullContent");
             if (content.implicitHeight !== 0) fail("hidden sections retained content height");
@@ -248,6 +316,12 @@ Item {
     QtObject {
         id: backend
         property string backendState: "connected"
+        property string gpuState: "available"
+        property string gpuName: "NVIDIA GeForce Extremely Long Model Name That Must Elide Safely"
+        property real gpuUtilizationPercent: 8
+        property real gpuMemoryPercent: 25
+        property string gpuMemoryDisplayText: "2.0 GiB / 8.0 GiB  ·  25.0%"
+        property string gpuTemperatureDisplayText: "47.0 °C"
         property int processCount: processEntries.length
         property var processEntries: [
             { "pid": 1, "name": "very-long-process-name-that-must-elide", "cpuPercent": 12.3, "memoryBytes": 500000000 },

@@ -10,11 +10,14 @@ Item {
     id: provider
 
     property bool enabled: true
+    property bool processesEnabled: true
+    property bool gpuEnabled: true
     property bool autoPoll: true
     property bool debugBackend: false
     property int refreshIntervalMs: 2000
     property int maximumProcessEntries: 5
     property string processSortMode: "cpu"
+    property int gpuRefreshIntervalMs: 1000
     property var socketClient: ttopBackendSocketBridge
     property string socketPath: socketClient.defaultSocketPath()
 
@@ -29,6 +32,25 @@ Item {
     property int backendProtocolVersion: 0
     property bool boundedProcessRequestSupported: true
     property string lastRequestCommand: ""
+    property string inFlightCommand: ""
+    property var requestQueue: []
+
+    readonly property bool gpuAvailable: gpuState === "available"
+    property string gpuState: "detecting"
+    property string gpuError: ""
+    property string gpuName: ""
+    property real gpuUtilizationPercent: NaN
+    property real gpuMemoryUsedBytes: NaN
+    property real gpuMemoryTotalBytes: NaN
+    property real gpuMemoryPercent: NaN
+    property real gpuTemperatureCelsius: NaN
+    readonly property string gpuMemoryDisplayText:
+        isFinite(gpuMemoryUsedBytes) && isFinite(gpuMemoryTotalBytes)
+        ? formatBytes(gpuMemoryUsedBytes) + " / " + formatBytes(gpuMemoryTotalBytes)
+          + (isFinite(gpuMemoryPercent) ? "  ·  " + gpuMemoryPercent.toFixed(1) + "%" : "")
+        : ""
+    readonly property string gpuTemperatureDisplayText:
+        isFinite(gpuTemperatureCelsius) ? gpuTemperatureCelsius.toFixed(1) + " °C" : ""
 
     readonly property int effectiveRefreshIntervalMs:
         [1000, 2000, 5000].indexOf(Number(refreshIntervalMs)) !== -1
@@ -38,10 +60,14 @@ Item {
         ? Number(maximumProcessEntries) : 5
     readonly property string effectiveProcessSortMode:
         processSortMode === "memory" ? "memory" : "cpu"
+    readonly property int effectiveGpuRefreshIntervalMs:
+        [500, 1000, 2000, 5000].indexOf(Number(gpuRefreshIntervalMs)) !== -1
+        ? Number(gpuRefreshIntervalMs) : 1000
     readonly property int retryIntervalMs: 5000
 
     property string lastLoggedState: ""
     property int lastLoggedCount: -1
+    property string lastLoggedGpuState: ""
 
     function setState(state, errorText) {
         backendState = state;
@@ -55,6 +81,32 @@ Item {
     function clearProcesses() {
         processEntries = [];
         processCount = 0;
+    }
+
+    function setGpuState(state, errorText) {
+        gpuState = state;
+        gpuError = errorText || "";
+        if (debugBackend && lastLoggedGpuState !== state) {
+            lastLoggedGpuState = state;
+            console.log("TTop Desk GPU: state changed to " + state);
+        }
+    }
+
+    function clearGpu() {
+        gpuName = "";
+        gpuUtilizationPercent = NaN;
+        gpuMemoryUsedBytes = NaN;
+        gpuMemoryTotalBytes = NaN;
+        gpuMemoryPercent = NaN;
+        gpuTemperatureCelsius = NaN;
+    }
+
+    function formatBytes(bytes) {
+        if (!isFinite(bytes) || bytes < 0) return "";
+        var gibibyte = 1024 * 1024 * 1024;
+        var mebibyte = 1024 * 1024;
+        return bytes >= gibibyte ? (bytes / gibibyte).toFixed(1) + " GiB"
+                                : (bytes / mebibyte).toFixed(0) + " MiB";
     }
 
     function finiteNonnegative(value) {
@@ -104,33 +156,39 @@ Item {
         return nameOrder !== 0 ? nameOrder : left.pid - right.pid;
     }
 
-    function handleResponse(responseText) {
-        if (!enabled) {
-            clearProcesses();
-            setState("unavailable", "");
-            return;
+    function normalizeGpu(entry) {
+        if (entry === null || typeof entry !== "object" || Array.isArray(entry)) return null;
+        var index = Number(entry.index);
+        if (!isFinite(index) || index < 0 || Math.floor(index) !== index) return null;
+        var name = typeof entry.name === "string"
+                   ? entry.name.replace(/^\s+|\s+$/g, "") : "";
+        if (name === "" || name.length > 256 || name.indexOf("\u0000") !== -1) {
+            name = "NVIDIA GPU";
         }
-        var response;
-        try {
-            response = JSON.parse(responseText);
-        } catch (error) {
-            clearProcesses();
-            setState("error", "malformed_response");
-            if (debugBackend) console.log("TTop Desk backend: malformed JSON response");
-            return;
+        var normalized = { "index": index, "name": name };
+        var utilization = finiteNonnegative(entry.utilizationPercent);
+        if (isFinite(utilization) && utilization <= 100) {
+            normalized.utilizationPercent = utilization;
         }
+        var used = finiteNonnegative(entry.memoryUsedBytes);
+        var total = finiteNonnegative(entry.memoryTotalBytes);
+        if (isFinite(used) && isFinite(total) && total > 0 && used <= total) {
+            normalized.memoryUsedBytes = used;
+            normalized.memoryTotalBytes = total;
+            normalized.memoryPercent = Math.max(0, Math.min(100, used * 100 / total));
+        }
+        var temperature = Number(entry.temperatureCelsius);
+        if (isFinite(temperature) && temperature >= -20 && temperature <= 150) {
+            normalized.temperatureCelsius = temperature;
+        }
+        return normalized;
+    }
 
-        if (response === null || typeof response !== "object"
-                || Number(response.version) !== 1) {
-            clearProcesses();
-            setState("error", "unsupported_protocol");
-            if (debugBackend) console.log("TTop Desk backend: protocol version error");
-            return;
-        }
-        backendProtocolVersion = Number(response.version);
+    function handleProcessResponse(response, requestCommand) {
+        if (!processesEnabled) return;
         if (response.status === "error") {
             if (response.error === "unsupported_command"
-                    && lastRequestCommand === "processes") {
+                    && requestCommand === "processes") {
                 boundedProcessRequestSupported = false;
                 setState("detecting", "");
                 if (debugBackend) {
@@ -147,16 +205,12 @@ Item {
         if (!Array.isArray(response.processes)) {
             clearProcesses();
             setState("error", "missing_processes");
-            if (debugBackend) console.log("TTop Desk backend: snapshot has no process array");
             return;
         }
-
         var normalized = [];
         var rejected = 0;
         for (var index = 0; index < response.processes.length; ++index) {
             var sourceEntry = response.processes[index];
-            // A missing CPU field is the backend's intentional first-sample
-            // warm-up state, not malformed data and not suitable for ranking.
             if (effectiveProcessSortMode === "cpu"
                     && sourceEntry !== null && typeof sourceEntry === "object"
                     && !Array.isArray(sourceEntry)
@@ -175,7 +229,6 @@ Item {
         processCount = normalized.length;
         backendLastResponse = Date.now();
         setState("connected", "");
-
         if (debugBackend && rejected > 0) {
             console.log("TTop Desk backend: rejected " + rejected + " malformed process entries");
         }
@@ -185,31 +238,190 @@ Item {
         }
     }
 
-    function requestProcesses() {
-        if (!enabled || socketClient === null || socketClient.busy) return;
-        if (debugBackend && (backendState === "unavailable" || backendState === "error")) {
-            console.log("TTop Desk backend: reconnect attempt");
+    function handleGpuResponse(response) {
+        if (!gpuEnabled) return;
+        if (response.status === "error") {
+            clearGpu();
+            setState("connected", "");
+            setGpuState(response.error === "unsupported_command" ? "unavailable" : "error",
+                        String(response.error || "gpu_error"));
+            return;
         }
-        if (boundedProcessRequestSupported) {
-            lastRequestCommand = "processes";
-            socketClient.request(JSON.stringify({
+        if (!Array.isArray(response.gpus)) {
+            clearGpu();
+            setState("connected", "");
+            setGpuState("error", "missing_gpus");
+            return;
+        }
+        var selected = null;
+        if (response.gpus.length === 1) {
+            selected = normalizeGpu(response.gpus[0]);
+        } else {
+            for (var index = 0; index < response.gpus.length; ++index) {
+                var candidate = normalizeGpu(response.gpus[index]);
+                if (candidate !== null && candidate.index === 0) {
+                    selected = candidate;
+                    break;
+                }
+            }
+        }
+        clearGpu();
+        backendLastResponse = Date.now();
+        setState("connected", "");
+        if (selected === null) {
+            setGpuState("unavailable", "no_supported_gpu");
+            return;
+        }
+        gpuName = selected.name;
+        gpuUtilizationPercent = selected.utilizationPercent === undefined
+                                ? NaN : selected.utilizationPercent;
+        gpuMemoryUsedBytes = selected.memoryUsedBytes === undefined
+                             ? NaN : selected.memoryUsedBytes;
+        gpuMemoryTotalBytes = selected.memoryTotalBytes === undefined
+                              ? NaN : selected.memoryTotalBytes;
+        gpuMemoryPercent = selected.memoryPercent === undefined
+                           ? NaN : selected.memoryPercent;
+        gpuTemperatureCelsius = selected.temperatureCelsius === undefined
+                                ? NaN : selected.temperatureCelsius;
+        setGpuState("available", "");
+    }
+
+    function handleResponse(responseText, requestCommand) {
+        if (!enabled) return;
+        var response;
+        try {
+            response = JSON.parse(responseText);
+        } catch (error) {
+            setState("error", "malformed_response");
+            if (requestCommand === "gpu") setGpuState("error", "malformed_response");
+            else clearProcesses();
+            return;
+        }
+        if (response === null || typeof response !== "object"
+                || Number(response.version) !== 1) {
+            setState("error", "unsupported_protocol");
+            if (requestCommand === "gpu") setGpuState("error", "unsupported_protocol");
+            else clearProcesses();
+            return;
+        }
+        backendProtocolVersion = Number(response.version);
+        if (requestCommand === "gpu") handleGpuResponse(response);
+        else if (requestCommand === "processes" || requestCommand === "snapshot") {
+            handleProcessResponse(response, requestCommand);
+        } else {
+            setState("error", "unexpected_response");
+        }
+    }
+
+    function completeResponse(responseText) {
+        var requestCommand = inFlightCommand;
+        inFlightCommand = "";
+        handleResponse(responseText, requestCommand);
+        dispatchTimer.restart();
+    }
+
+    function enqueueRequest(requestType) {
+        if (requestType !== "processes" && requestType !== "gpu") return;
+        if (inFlightCommand === requestType
+                || (requestType === "processes" && inFlightCommand === "snapshot")) {
+            return;
+        }
+        if (requestQueue.indexOf(requestType) !== -1) {
+            sendNextRequest();
+            return;
+        }
+        var queued = requestQueue.slice(0);
+        queued.push(requestType);
+        requestQueue = queued;
+        sendNextRequest();
+    }
+
+    function sendNextRequest() {
+        if (!enabled || socketClient === null || socketClient.busy
+                || inFlightCommand !== "" || requestQueue.length === 0) {
+            return;
+        }
+        var queued = requestQueue.slice(0);
+        var requestType = queued.shift();
+        requestQueue = queued;
+        var command = requestType;
+        var payload = "";
+        if (requestType === "processes") {
+            command = boundedProcessRequestSupported ? "processes" : "snapshot";
+            payload = command === "processes" ? JSON.stringify({
                 "command": "processes",
                 "sort": effectiveProcessSortMode,
                 "limit": effectiveMaximumProcessEntries
-            }));
+            }) : '{"command":"snapshot"}';
         } else {
-            lastRequestCommand = "snapshot";
-            socketClient.request('{"command":"snapshot"}');
+            payload = '{"command":"gpu"}';
+        }
+        inFlightCommand = command;
+        lastRequestCommand = command;
+        if (!socketClient.request(payload)) {
+            inFlightCommand = "";
+            queued = requestQueue.slice(0);
+            queued.unshift(requestType);
+            requestQueue = queued;
+            return;
+        }
+    }
+
+    function requestProcesses() {
+        if (!enabled || !processesEnabled || socketClient === null) return;
+        if (debugBackend && (backendState === "unavailable" || backendState === "error")) {
+            console.log("TTop Desk backend: reconnect attempt");
+        }
+        enqueueRequest("processes");
+    }
+
+    function requestGpu() {
+        if (!enabled || !gpuEnabled || socketClient === null) return;
+        if (debugBackend && backendState === "unavailable") {
+            console.log("TTop Desk GPU: reconnect attempt");
+        }
+        enqueueRequest("gpu");
+    }
+
+    function discardQueuedRequest(requestType) {
+        var queued = requestQueue.slice(0);
+        var index = queued.indexOf(requestType);
+        if (index !== -1) {
+            queued.splice(index, 1);
+            requestQueue = queued;
         }
     }
 
     onEnabledChanged: {
         if (enabled) {
             setState("detecting", "");
-            pollTimer.restart();
+            if (processesEnabled) processPollTimer.restart();
+            if (gpuEnabled) gpuPollTimer.restart();
         } else {
+            requestQueue = [];
             clearProcesses();
+            clearGpu();
             setState("unavailable", "");
+            setGpuState("unavailable", "");
+        }
+    }
+    onProcessesEnabledChanged: {
+        if (processesEnabled && enabled) {
+            setState("detecting", "");
+            processPollTimer.restart();
+        } else {
+            discardQueuedRequest("processes");
+            clearProcesses();
+        }
+    }
+    onGpuEnabledChanged: {
+        clearGpu();
+        if (gpuEnabled && enabled) {
+            setGpuState("detecting", "");
+            gpuPollTimer.restart();
+        } else {
+            discardQueuedRequest("gpu");
+            setGpuState("unavailable", "");
         }
     }
     onEffectiveMaximumProcessEntriesChanged: {
@@ -238,13 +450,24 @@ Item {
     Connections {
         target: provider.socketClient
         function onResponseReceived(jsonLine) {
-            provider.handleResponse(jsonLine);
+            provider.completeResponse(jsonLine);
         }
         function onTransportError(errorCode) {
+            provider.inFlightCommand = "";
+            provider.requestQueue = [];
             provider.clearProcesses();
+            provider.clearGpu();
             provider.boundedProcessRequestSupported = true;
             provider.setState("unavailable", errorCode);
+            provider.setGpuState("unavailable", errorCode);
         }
+    }
+
+    Timer {
+        id: dispatchTimer
+        interval: 0
+        repeat: false
+        onTriggered: provider.sendNextRequest()
     }
 
     Timer {
@@ -262,13 +485,25 @@ Item {
     }
 
     Timer {
-        id: pollTimer
+        id: processPollTimer
         interval: provider.backendState === "unavailable"
                   || provider.backendState === "error"
                   ? provider.retryIntervalMs : provider.effectiveRefreshIntervalMs
         repeat: true
-        running: provider.enabled && provider.autoPoll
+        running: provider.enabled && provider.processesEnabled && provider.autoPoll
         triggeredOnStart: true
         onTriggered: provider.requestProcesses()
+    }
+
+    Timer {
+        id: gpuPollTimer
+        interval: provider.backendState === "unavailable"
+                  || provider.backendState === "error"
+                  || provider.gpuState === "unavailable"
+                  ? provider.retryIntervalMs : provider.effectiveGpuRefreshIntervalMs
+        repeat: true
+        running: provider.enabled && provider.gpuEnabled && provider.autoPoll
+        triggeredOnStart: true
+        onTriggered: provider.requestGpu()
     }
 }

@@ -5,7 +5,8 @@ KDE Plasma 5 cannot expose directly. Current CPU, RAM, network, temperature,
 filesystem, and disk-I/O metrics remain Plasma-native. Milestone 1.9 connected
 the backend's process snapshot to the full widget through a persistent
 in-process Qt `QLocalSocket` bridge. Milestone 1.10 adds bounded process
-requests and an optional development `systemd --user` service.
+requests and an optional development `systemd --user` service. Milestone 1.12
+adds an optional NVIDIA NVML provider for read-only GPU metrics.
 
 ## Architecture
 
@@ -13,8 +14,11 @@ requests and an optional development `systemd --user` service.
 - `ttop_backend.protocol` validates and encodes versioned NDJSON messages.
 - `ttop_backend.metrics` composes stable top-level snapshots.
 - `ttop_backend.processes` samples and normalizes bounded psutil process data.
+- `ttop_backend.gpu` selects optional vendor providers; `gpu.nvidia` is a
+  minimal standard-library `ctypes` binding to NVIDIA NVML.
 
-GPU data is reserved as `null`; this milestone does not implement GPU support.
+The backwards-compatible snapshot retains its reserved `gpu: null` field; live
+GPU data uses the dedicated `gpu` command.
 At most 512 normalized processes are returned. There is no persistent history
 or database. CPU deltas retain only the immediately previous observation for
 currently present PIDs.
@@ -57,6 +61,21 @@ and must be an integer from 1 through 20. Both modes sort descending by their
 metric, then deterministically by process name and PID. Invalid parameters
 return `invalid_sort` or `invalid_limit`; requests are never unbounded.
 
+```json
+{"command":"gpu"}
+```
+
+```json
+{"status":"ok","version":1,"timestamp":1720000000.0,"gpus":[{"index":0,"name":"NVIDIA GeForce RTX 5060 Ti","utilizationPercent":8.0,"memoryUsedBytes":2147483648,"memoryTotalBytes":8589934592,"memoryPercent":25.0,"temperatureCelsius":47.0}]}
+```
+
+The backend loads `libnvidia-ml.so.1` directly, initializes NVML once per
+backend lifetime, and shuts it down on exit. It never invokes `nvidia-smi` and
+does not require `pynvml`. All NVIDIA devices are represented in `gpus`; the
+widget selects index 0. Missing NVML, driver failures, and zero devices return
+a successful response with `gpus: []`. AMD and Intel are possible future
+providers but are not implemented.
+
 Errors are structured, for example:
 
 ```json
@@ -83,6 +102,7 @@ The development JSON client remains available separately:
 
 ```bash
 python3 scripts/backend-client.py
+python3 scripts/backend-client.py --gpu
 ```
 
 For an isolated test socket:
@@ -153,3 +173,9 @@ It automatically falls back to `snapshot` when an older protocol-v1 backend
 rejects the newer command. A stopped backend clears process rows
 and changes only that section to `Backend unavailable`; reconnect attempts use
 a five-second backoff. No process action is supported.
+
+GPU polling uses the same QML socket bridge and defaults to one second. Hiding
+the GPU section stops GPU requests. `GPU unavailable` means the backend replied
+but exposed no supported device; `Backend unavailable` means the socket could
+not be reached. GPU access is strictly read-only: no process, clock, fan,
+power-limit, or other device-control APIs are bound.

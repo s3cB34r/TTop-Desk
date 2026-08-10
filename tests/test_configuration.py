@@ -22,6 +22,7 @@ class ConfigurationSchemaTests(unittest.TestCase):
             "showFilesystems": "true",
             "showDiskIo": "true",
             "showProcesses": "true",
+            "showGpu": "true",
             "showHeader": "true",
             "showMetricIcons": "true",
             "showSectionLabels": "true",
@@ -30,6 +31,10 @@ class ConfigurationSchemaTests(unittest.TestCase):
             "showFilesystemProgressBars": "true",
             "showProcessCpu": "true",
             "showProcessMemory": "true",
+            "showGpuUtilization": "true",
+            "showGpuMemory": "true",
+            "showGpuTemperature": "true",
+            "showGpuProgressBars": "true",
             "showNetworkRx": "true",
             "showNetworkTx": "true",
             "showDiskRead": "true",
@@ -43,6 +48,7 @@ class ConfigurationSchemaTests(unittest.TestCase):
             "maximumProcessEntries": "5",
             "processSortMode": "cpu",
             "processRefreshIntervalMs": "2000",
+            "gpuRefreshIntervalMs": "1000",
             "backgroundOpacity": "1.0",
             "usePlasmaThemeBackground": "true",
             "customBackgroundColor": "#20252b",
@@ -72,7 +78,7 @@ class ConfigurationSchemaTests(unittest.TestCase):
     def test_plugin_identity_is_unchanged(self) -> None:
         metadata = json.loads((PACKAGE_ROOT / "metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(metadata["KPlugin"]["Id"], "io.github.s3cb34r.ttopdesk")
-        self.assertEqual(metadata["KPlugin"]["Version"], "0.1.11")
+        self.assertEqual(metadata["KPlugin"]["Version"], "0.1.12")
 
 
 if __name__ == "__main__":

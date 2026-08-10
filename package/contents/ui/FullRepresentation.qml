@@ -22,6 +22,7 @@ Rectangle {
     property bool showFilesystems: true
     property bool showDiskIo: true
     property bool showProcesses: true
+    property bool showGpu: true
     property bool showHeader: true
     property bool showMetricIcons: true
     property bool showSectionLabels: true
@@ -30,6 +31,10 @@ Rectangle {
     property bool showFilesystemProgressBars: true
     property bool showProcessCpu: true
     property bool showProcessMemory: true
+    property bool showGpuUtilization: true
+    property bool showGpuMemory: true
+    property bool showGpuTemperature: true
+    property bool showGpuProgressBars: true
     property bool showNetworkRx: true
     property bool showNetworkTx: true
     property bool showDiskRead: true
@@ -151,6 +156,20 @@ Rectangle {
             valueText: fullView.metricsProvider.temperatureDisplayText
             availabilityState: fullView.metricsProvider.temperatureState
             severity: fullView.metricsProvider.temperatureSeverity
+        }
+
+        Components.GpuSection {
+            objectName: "gpuSection"
+            visible: fullView.showGpu
+            Layout.fillWidth: true
+            backendProvider: fullView.backendProvider
+            showIcon: fullView.showMetricIcons
+            showLabel: fullView.showSectionLabels
+            showUtilization: fullView.showGpuUtilization
+            showMemory: fullView.showGpuMemory
+            showTemperature: fullView.showGpuTemperature
+            showProgressBars: fullView.showGpuProgressBars
+            denseMode: fullView.denseMode
         }
 
         Components.NetworkRow {

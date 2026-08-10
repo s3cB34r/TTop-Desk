@@ -12,10 +12,12 @@ Item {
     id: compactView
 
     property var metricsProvider
+    property var backendProvider
     property bool showCpu: true
     property bool showMemory: true
     property bool showNetwork: true
     property bool showTemperature: true
+    property bool showGpu: true
     property bool showMetricIcons: true
     property bool compactModeDetails: false
     property string widgetTitle: "TTop Desk"
@@ -26,13 +28,15 @@ Item {
         (showCpu ? 1 : 0) + (showMemory ? 1 : 0)
         + (compactModeDetails && showNetwork ? 1 : 0)
         + (compactModeDetails && showTemperature ? 1 : 0)
+        + (compactModeDetails && showGpu ? 1 : 0)
 
     Layout.preferredWidth: vertical
                            ? PlasmaCore.Units.gridUnit * 5
                            : PlasmaCore.Units.gridUnit * Math.max(6,
                                (showCpu ? 4 : 0) + (showMemory ? 4 : 0)
                                + (compactModeDetails && showNetwork ? 8 : 0)
-                               + (compactModeDetails && showTemperature ? 5 : 0))
+                               + (compactModeDetails && showTemperature ? 5 : 0)
+                               + (compactModeDetails && showGpu ? 5 : 0))
     Layout.preferredHeight: vertical
                             ? PlasmaCore.Units.gridUnit
                               * Math.max(2, visibleMetricCount * 1.6)
@@ -212,6 +216,53 @@ Item {
                     font.family: "monospace"
                     horizontalAlignment: Text.AlignRight
                     elide: Text.ElideLeft
+                }
+            }
+        }
+
+        PlasmaCore.ToolTipArea {
+            visible: compactView.compactModeDetails && compactView.showGpu
+            Layout.fillWidth: compactView.vertical
+            Layout.preferredWidth: PlasmaCore.Units.gridUnit * 5
+            Layout.preferredHeight: PlasmaCore.Units.gridUnit
+            mainText: compactView.backendProvider.gpuName !== ""
+                      ? compactView.backendProvider.gpuName : qsTr("GPU utilization")
+            subText: compactView.backendProvider.gpuState === "available"
+                     && isFinite(compactView.backendProvider.gpuUtilizationPercent)
+                     ? compactView.backendProvider.gpuUtilizationPercent.toFixed(1) + "%"
+                     : compactView.backendProvider.backendState === "unavailable"
+                       ? qsTr("Backend unavailable")
+                       : compactView.backendProvider.gpuState === "unavailable"
+                         ? qsTr("GPU unavailable") : qsTr("Detecting…")
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: PlasmaCore.Units.smallSpacing
+
+                PlasmaCore.IconItem {
+                    visible: compactView.showMetricIcons
+                    source: "video-display"
+                    Layout.preferredWidth: PlasmaCore.Units.iconSizes.small
+                    Layout.preferredHeight: width
+                }
+
+                PlasmaComponents.Label {
+                    text: qsTr("GPU")
+                    color: PlasmaCore.Theme.textColor
+                    font.bold: true
+                }
+
+                PlasmaComponents.Label {
+                    Layout.fillWidth: true
+                    text: compactView.backendProvider.gpuState === "available"
+                          && isFinite(compactView.backendProvider.gpuUtilizationPercent)
+                          ? compactView.backendProvider.gpuUtilizationPercent.toFixed(0) + "%"
+                          : compactView.backendProvider.gpuState === "detecting" ? "…" : "—"
+                    color: compactView.backendProvider.gpuState === "available"
+                           ? PlasmaCore.Theme.highlightColor
+                           : PlasmaCore.Theme.disabledTextColor
+                    font.family: "monospace"
+                    horizontalAlignment: Text.AlignRight
                 }
             }
         }

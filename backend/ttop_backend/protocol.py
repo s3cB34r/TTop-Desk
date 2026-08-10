@@ -9,7 +9,7 @@ from typing import Any
 
 PROTOCOL_VERSION = 1
 MAX_REQUEST_BYTES = 4096
-SUPPORTED_COMMANDS = frozenset({"ping", "snapshot", "processes"})
+SUPPORTED_COMMANDS = frozenset({"ping", "snapshot", "processes", "gpu"})
 PROCESS_SORT_VALUES = frozenset({"cpu", "memory"})
 DEFAULT_PROCESS_SORT = "cpu"
 DEFAULT_PROCESS_LIMIT = 5
@@ -62,7 +62,7 @@ def parse_request(raw_request: bytes) -> Request:
     command = request["command"]
     if command not in SUPPORTED_COMMANDS:
         raise ProtocolError("unsupported_command")
-    if command in {"ping", "snapshot"}:
+    if command in {"ping", "snapshot", "gpu"}:
         if set(request) != {"command"}:
             raise ProtocolError("invalid_request")
         return Request(command)
@@ -87,6 +87,7 @@ def handle_request(
     raw_request: bytes,
     snapshot_factory: Callable[[], Mapping[str, Any]],
     processes_factory: Callable[[str, int], Mapping[str, Any]] | None = None,
+    gpu_factory: Callable[[], Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Dispatch a validated request without dynamic attribute lookup."""
     try:
@@ -101,6 +102,12 @@ def handle_request(
             if processes_factory is None:
                 return error_response("unsupported_command")
             response = dict(processes_factory(request.sort, request.limit))
+            response["version"] = PROTOCOL_VERSION
+            return response
+        if request.command == "gpu":
+            if gpu_factory is None:
+                return error_response("unsupported_command")
+            response = dict(gpu_factory())
             response["version"] = PROTOCOL_VERSION
             return response
     except ProtocolError as error:

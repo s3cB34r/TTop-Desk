@@ -132,12 +132,21 @@ class BackendServer:
                 command_for_log = "snapshot"
             elif b'"processes"' in request:
                 command_for_log = "processes"
+            elif b'"gpu"' in request:
+                command_for_log = "gpu"
         LOGGER.debug("Command received: %s", command_for_log)
-        response = handle_request(request, self.collector.snapshot, self.collector.processes)
+        response = handle_request(
+            request,
+            self.collector.snapshot,
+            self.collector.processes,
+            self.collector.gpu,
+        )
         if response.get("error") == "internal_error":
-            LOGGER.error("Snapshot request failed internally")
+            LOGGER.error("Backend request failed internally")
         if response.get("processes") is not None:
             LOGGER.debug("Normalized process count: %d", len(response["processes"]))
+        if response.get("gpus") is not None:
+            LOGGER.debug("Normalized GPU count: %d", len(response["gpus"]))
         connection.sendall(encode_response(response))
 
     def serve_forever(self) -> None:
@@ -170,6 +179,7 @@ class BackendServer:
         finally:
             server_socket.close()
             self._socket = None
+            self.collector.close()
             remove_owned_socket(self.socket_path)
             LOGGER.debug("Backend stopped")
 

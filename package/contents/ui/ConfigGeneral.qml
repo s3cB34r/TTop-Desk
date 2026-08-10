@@ -33,11 +33,17 @@ Kirigami.FormLayout {
     property alias cfg_showDiskRead: diskRead.checked
     property alias cfg_showDiskWrite: diskWrite.checked
     property alias cfg_showProcesses: showProcesses.checked
+    property alias cfg_showGpu: showGpu.checked
     property string cfg_processSortMode: "cpu"
     property int cfg_maximumProcessEntries: 5
     property int cfg_processRefreshIntervalMs: 2000
     property alias cfg_showProcessCpu: showProcessCpu.checked
     property alias cfg_showProcessMemory: showProcessMemory.checked
+    property alias cfg_showGpuUtilization: showGpuUtilization.checked
+    property alias cfg_showGpuMemory: showGpuMemory.checked
+    property alias cfg_showGpuTemperature: showGpuTemperature.checked
+    property alias cfg_showGpuProgressBars: showGpuProgressBars.checked
+    property int cfg_gpuRefreshIntervalMs: 1000
     property int cfg_refreshIntervalMs: 1000
     property int cfg_filesystemRefreshIntervalMs: 15000
     property int cfg_maximumFilesystemEntries: 3
@@ -108,6 +114,51 @@ Kirigami.FormLayout {
         id: filesystemBars
         text: qsTr("Show filesystem progress bars")
         enabled: showFilesystems.checked
+    }
+
+    Kirigami.Heading {
+        Kirigami.FormData.isSection: true
+        level: 4
+        text: qsTr("GPU")
+    }
+
+    QtControls.CheckBox { id: showGpu; text: qsTr("Show GPU") }
+    QtControls.CheckBox {
+        id: showGpuUtilization
+        text: qsTr("Show GPU utilization")
+        enabled: showGpu.checked
+    }
+    QtControls.CheckBox {
+        id: showGpuMemory
+        text: qsTr("Show GPU memory")
+        enabled: showGpu.checked
+    }
+    QtControls.CheckBox {
+        id: showGpuTemperature
+        text: qsTr("Show GPU temperature")
+        enabled: showGpu.checked
+    }
+    QtControls.CheckBox {
+        id: showGpuProgressBars
+        text: qsTr("Show GPU progress bars")
+        enabled: showGpu.checked
+    }
+
+    QtControls.ComboBox {
+        Kirigami.FormData.label: qsTr("GPU update:")
+        enabled: showGpu.checked
+        Layout.minimumWidth: Kirigami.Units.gridUnit * 9
+        textRole: "label"
+        valueRole: "milliseconds"
+        model: [
+            { "label": qsTr("500 ms"), "milliseconds": 500 },
+            { "label": qsTr("1 second"), "milliseconds": 1000 },
+            { "label": qsTr("2 seconds"), "milliseconds": 2000 },
+            { "label": qsTr("5 seconds"), "milliseconds": 5000 }
+        ]
+        currentIndex: configPage.optionIndex(configPage.cfg_gpuRefreshIntervalMs,
+                                             [500, 1000, 2000, 5000], 1)
+        onActivated: configPage.cfg_gpuRefreshIntervalMs = currentValue
     }
 
     Kirigami.Heading {
