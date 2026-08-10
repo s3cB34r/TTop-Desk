@@ -23,12 +23,16 @@ Rectangle {
     property bool showMetricIcons: true
 
     readonly property int contentMargin: PlasmaCore.Units.largeSpacing
+    readonly property int minimumCardWidth: PlasmaCore.Units.gridUnit * 12
+    readonly property int preferredCardWidth: PlasmaCore.Units.gridUnit * 17
 
-    Layout.minimumWidth: PlasmaCore.Units.gridUnit * 12
-    Layout.preferredWidth: PlasmaCore.Units.gridUnit * 14
-    Layout.preferredHeight: implicitHeight
-    implicitWidth: Layout.preferredWidth
+    implicitWidth: preferredCardWidth
     implicitHeight: content.implicitHeight + contentMargin * 2
+
+    Layout.minimumWidth: minimumCardWidth
+    Layout.preferredWidth: implicitWidth
+    Layout.minimumHeight: implicitHeight
+    Layout.preferredHeight: implicitHeight
 
     color: PlasmaCore.Theme.backgroundColor
     radius: PlasmaCore.Units.smallSpacing
