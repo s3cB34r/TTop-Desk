@@ -17,6 +17,9 @@ ColumnLayout {
     property bool showLabel: true
     property bool showRx: true
     property bool showTx: true
+    property bool showGraph: false
+    property var rxHistory: []
+    property var txHistory: []
     // Supported states: "loading", "available", and "unavailable".
     property string availabilityState: "loading"
 
@@ -60,5 +63,18 @@ ColumnLayout {
             horizontalAlignment: Text.AlignRight
             elide: Text.ElideLeft
         }
+    }
+
+    Sparkline {
+        objectName: "networkSparkline"
+        visible: row.available && row.showGraph && (row.showRx || row.showTx)
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible ? implicitHeight : 0
+        values: row.rxHistory
+        secondaryValues: row.txHistory
+        showPrimary: row.showRx
+        showSecondary: row.showTx
+        dynamicScale: true
+        dynamicMinimumMaximum: 1024
     }
 }

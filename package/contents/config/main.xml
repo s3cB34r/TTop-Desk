@@ -69,6 +69,21 @@
     <entry name="showGpuProgressBars" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="showGraphs" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showCpuGraph" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showMemoryGraph" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showGpuGraph" type="Bool">
+      <default>true</default>
+    </entry>
+    <entry name="showNetworkGraph" type="Bool">
+      <default>true</default>
+    </entry>
     <entry name="showNetworkRx" type="Bool">
       <default>true</default>
     </entry>
@@ -110,6 +125,9 @@
     </entry>
     <entry name="gpuRefreshIntervalMs" type="Int">
       <default>1000</default>
+    </entry>
+    <entry name="historySampleCount" type="Int">
+      <default>60</default>
     </entry>
     <entry name="backgroundOpacity" type="Double">
       <default>1.0</default>

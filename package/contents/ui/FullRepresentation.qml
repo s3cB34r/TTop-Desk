@@ -35,6 +35,12 @@ Rectangle {
     property bool showGpuMemory: true
     property bool showGpuTemperature: true
     property bool showGpuProgressBars: true
+    property bool showGraphs: true
+    property bool showCpuGraph: true
+    property bool showMemoryGraph: true
+    property bool showGpuGraph: true
+    property bool showNetworkGraph: true
+    property int historySampleCount: 60
     property bool showNetworkRx: true
     property bool showNetworkTx: true
     property bool showDiskRead: true
@@ -72,6 +78,20 @@ Rectangle {
                           PlasmaCore.Theme.highlightColor.g,
                           PlasmaCore.Theme.highlightColor.b, 0.35)
     border.width: 1
+
+    MetricHistory {
+        id: metricHistory
+        metricsProvider: fullView.metricsProvider
+        backendProvider: fullView.backendProvider
+        maximumSamples: fullView.historySampleCount
+        cpuEnabled: fullView.showGraphs && fullView.showCpu && fullView.showCpuGraph
+        memoryEnabled: fullView.showGraphs && fullView.showMemory && fullView.showMemoryGraph
+        gpuEnabled: fullView.showGraphs && fullView.showGpu && fullView.showGpuGraph
+        networkEnabled: fullView.showGraphs && fullView.showNetwork
+                        && fullView.showNetworkGraph
+        networkRxEnabled: fullView.showNetworkRx
+        networkTxEnabled: fullView.showNetworkTx
+    }
 
     ColumnLayout {
         id: content
@@ -127,6 +147,8 @@ Rectangle {
             showIcon: fullView.showMetricIcons
             showLabel: fullView.showSectionLabels
             showProgressBar: fullView.showCpuProgressBar
+            showGraph: fullView.showGraphs && fullView.showCpuGraph
+            graphValues: metricHistory.cpuValues
             valueText: fullView.metricsProvider.cpuAvailable
                        ? fullView.metricsProvider.cpuPercent.toFixed(1) + "%" : ""
             progressValue: fullView.metricsProvider.cpuPercent
@@ -142,6 +164,8 @@ Rectangle {
             showIcon: fullView.showMetricIcons
             showLabel: fullView.showSectionLabels
             showProgressBar: fullView.showMemoryProgressBar
+            showGraph: fullView.showGraphs && fullView.showMemoryGraph
+            graphValues: metricHistory.memoryValues
             valueText: fullView.metricsProvider.memoryDisplayText
             progressValue: fullView.metricsProvider.memoryPercent
             availabilityState: fullView.metricsProvider.memoryState
@@ -169,6 +193,8 @@ Rectangle {
             showMemory: fullView.showGpuMemory
             showTemperature: fullView.showGpuTemperature
             showProgressBars: fullView.showGpuProgressBars
+            showGraph: fullView.showGraphs && fullView.showGpuGraph
+            graphValues: metricHistory.gpuValues
             denseMode: fullView.denseMode
         }
 
@@ -180,6 +206,9 @@ Rectangle {
             showLabel: fullView.showSectionLabels
             showRx: fullView.showNetworkRx
             showTx: fullView.showNetworkTx
+            showGraph: fullView.showGraphs && fullView.showNetworkGraph
+            rxHistory: metricHistory.networkRxValues
+            txHistory: metricHistory.networkTxValues
             rxText: fullView.metricsProvider.networkRxDisplayText
             txText: fullView.metricsProvider.networkTxDisplayText
             availabilityState: fullView.metricsProvider.networkState

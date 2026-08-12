@@ -18,6 +18,8 @@ ColumnLayout {
     property bool showMemory: true
     property bool showTemperature: true
     property bool showProgressBars: true
+    property bool showGraph: false
+    property var graphValues: []
     property bool denseMode: false
 
     readonly property bool available: backendProvider !== null
@@ -91,6 +93,16 @@ ColumnLayout {
         value: isFinite(section.backendProvider.gpuUtilizationPercent)
                ? Math.max(0, Math.min(100,
                                      section.backendProvider.gpuUtilizationPercent)) : 0
+    }
+
+    Sparkline {
+        objectName: "gpuSparkline"
+        visible: section.available && section.showGraph
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible ? implicitHeight : 0
+        values: section.graphValues
+        minimumValue: 0
+        maximumValue: 100
     }
 
     RowLayout {

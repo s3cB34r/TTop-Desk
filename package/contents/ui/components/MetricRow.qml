@@ -16,6 +16,8 @@ ColumnLayout {
     property bool showIcon: true
     property bool showLabel: true
     property bool showProgressBar: true
+    property bool showGraph: false
+    property var graphValues: []
     property string valueText: ""
     property real progressValue: 0
     // Supported states: "loading", "available", and "unavailable".
@@ -72,5 +74,15 @@ ColumnLayout {
                : 0
         indeterminate: row.availabilityState === "loading"
         opacity: row.availabilityState === "unavailable" ? 0.45 : 1
+    }
+
+    Sparkline {
+        objectName: "metricSparkline"
+        visible: row.showGraph && row.available
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible ? implicitHeight : 0
+        values: row.graphValues
+        minimumValue: 0
+        maximumValue: 100
     }
 }

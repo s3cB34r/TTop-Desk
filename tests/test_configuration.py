@@ -35,6 +35,11 @@ class ConfigurationSchemaTests(unittest.TestCase):
             "showGpuMemory": "true",
             "showGpuTemperature": "true",
             "showGpuProgressBars": "true",
+            "showGraphs": "true",
+            "showCpuGraph": "true",
+            "showMemoryGraph": "true",
+            "showGpuGraph": "true",
+            "showNetworkGraph": "true",
             "showNetworkRx": "true",
             "showNetworkTx": "true",
             "showDiskRead": "true",
@@ -49,6 +54,7 @@ class ConfigurationSchemaTests(unittest.TestCase):
             "processSortMode": "cpu",
             "processRefreshIntervalMs": "2000",
             "gpuRefreshIntervalMs": "1000",
+            "historySampleCount": "60",
             "backgroundOpacity": "1.0",
             "usePlasmaThemeBackground": "true",
             "customBackgroundColor": "#20252b",
@@ -61,7 +67,7 @@ class ConfigurationSchemaTests(unittest.TestCase):
         }
         self.assertEqual(actual, expected)
 
-    def test_configuration_page_contains_six_groups(self) -> None:
+    def test_configuration_page_contains_seven_groups(self) -> None:
         model = (PACKAGE_ROOT / "contents/config/config.qml").read_text(
             encoding="utf-8"
         )
@@ -72,13 +78,13 @@ class ConfigurationSchemaTests(unittest.TestCase):
         page = (PACKAGE_ROOT / "contents/ui/ConfigGeneral.qml").read_text(
             encoding="utf-8"
         )
-        for heading in ("General", "Display", "Metrics", "Processes", "Refresh", "Appearance"):
+        for heading in ("General", "Display", "Metrics", "Graphs", "Processes", "Refresh", "Appearance"):
             self.assertIn(f'text: qsTr("{heading}")', page)
 
     def test_plugin_identity_is_unchanged(self) -> None:
         metadata = json.loads((PACKAGE_ROOT / "metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(metadata["KPlugin"]["Id"], "io.github.s3cb34r.ttopdesk")
-        self.assertEqual(metadata["KPlugin"]["Version"], "0.1.12")
+        self.assertEqual(metadata["KPlugin"]["Version"], "0.1.13")
 
 
 if __name__ == "__main__":

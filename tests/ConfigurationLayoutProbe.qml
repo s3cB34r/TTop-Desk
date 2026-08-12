@@ -17,7 +17,9 @@ Item {
         "iconsDisabled", "progressDisabled", "processNameOnly",
         "subElements", "labelsDisabled", "dense", "gpuDisabled", "onlyGpu",
         "gpuUtilizationOnly", "gpuMemoryOnly", "gpuTemperatureOnly", "gpuNoBars",
-        "processesGpu", "filesystemsGpu", "allHidden", "appearance"
+        "processesGpu", "filesystemsGpu", "allHidden", "appearance",
+        "graphsDisabled", "cpuGraphOnly", "networkGraphOnly",
+        "history30", "history60", "history120"
     ]
     property int caseIndex: 0
     property real allHeight: 0
@@ -76,6 +78,12 @@ Item {
         card.showGpuMemory = true;
         card.showGpuTemperature = true;
         card.showGpuProgressBars = true;
+        card.showGraphs = true;
+        card.showCpuGraph = true;
+        card.showMemoryGraph = true;
+        card.showGpuGraph = true;
+        card.showNetworkGraph = true;
+        card.historySampleCount = 60;
         card.showNetworkRx = true;
         card.showNetworkTx = true;
         card.showDiskRead = true;
@@ -157,6 +165,22 @@ Item {
             card.usePlasmaThemeBackground = false;
             card.customBackgroundColor = "#123456";
             card.backgroundOpacity = 0.5;
+        } else if (name === "graphsDisabled") {
+            card.showGraphs = false;
+        } else if (name === "cpuGraphOnly") {
+            setSections(false); card.showHeader = false; card.showCpu = true;
+            card.showMemoryGraph = false; card.showGpuGraph = false;
+            card.showNetworkGraph = false;
+        } else if (name === "networkGraphOnly") {
+            setSections(false); card.showHeader = false; card.showNetwork = true;
+            card.showCpuGraph = false; card.showMemoryGraph = false;
+            card.showGpuGraph = false;
+        } else if (name === "history30") {
+            card.historySampleCount = 30;
+        } else if (name === "history60") {
+            card.historySampleCount = 60;
+        } else if (name === "history120") {
+            card.historySampleCount = 120;
         }
     }
 
@@ -281,6 +305,30 @@ Item {
             if (card.implicitHeight !== card.contentMargin * 2) fail("empty card height is not margin-only");
         } else if (name === "appearance") {
             if (Math.abs(card.color.a - 0.5) > 0.01) fail("background opacity was not applied");
+        } else if (name === "graphsDisabled") {
+            if (visibleObjectCount(card, "metricSparkline") !== 0
+                    || visibleObjectCount(card, "gpuSparkline") !== 0
+                    || visibleObjectCount(card, "networkSparkline") !== 0) {
+                fail("disabled graphs retained visible canvas height");
+            }
+            if (card.implicitHeight >= allHeight) fail("disabled graphs did not shrink card");
+        } else if (name === "cpuGraphOnly") {
+            if (visibleObjectCount(card, "metricSparkline") !== 1
+                    || !bottomInsideCard(cpu)) {
+                fail("CPU-only graph layout is incorrect");
+            }
+        } else if (name === "networkGraphOnly") {
+            var network = findByObjectName(card, "networkSection");
+            if (visibleObjectCount(card, "networkSparkline") !== 1
+                    || !bottomInsideCard(network)) {
+                fail("network-only graph layout is incorrect");
+            }
+        } else if (name === "history30" || name === "history60"
+                   || name === "history120") {
+            var expectedHistory = Number(name.replace("history", ""));
+            if (card.historySampleCount !== expectedHistory) {
+                fail("history length did not update live");
+            }
         }
         if (card.implicitWidth !== allWidth) fail("configuration changed stable card width");
     }
@@ -304,6 +352,8 @@ Item {
         property string temperatureSeverity: "normal"
         property string networkRxDisplayText: "1.0 MiB/s"
         property string networkTxDisplayText: "512 KiB/s"
+        property real networkRxBytesPerSecond: 1048576
+        property real networkTxBytesPerSecond: 524288
         property string networkState: "available"
         property string diskReadDisplayText: "2.0 MiB/s"
         property string diskWriteDisplayText: "1.0 MiB/s"

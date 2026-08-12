@@ -43,6 +43,12 @@ Kirigami.FormLayout {
     property alias cfg_showGpuMemory: showGpuMemory.checked
     property alias cfg_showGpuTemperature: showGpuTemperature.checked
     property alias cfg_showGpuProgressBars: showGpuProgressBars.checked
+    property alias cfg_showGraphs: showGraphs.checked
+    property alias cfg_showCpuGraph: showCpuGraph.checked
+    property alias cfg_showMemoryGraph: showMemoryGraph.checked
+    property alias cfg_showGpuGraph: showGpuGraph.checked
+    property alias cfg_showNetworkGraph: showNetworkGraph.checked
+    property int cfg_historySampleCount: 60
     property int cfg_gpuRefreshIntervalMs: 1000
     property int cfg_refreshIntervalMs: 1000
     property int cfg_filesystemRefreshIntervalMs: 15000
@@ -159,6 +165,49 @@ Kirigami.FormLayout {
         currentIndex: configPage.optionIndex(configPage.cfg_gpuRefreshIntervalMs,
                                              [500, 1000, 2000, 5000], 1)
         onActivated: configPage.cfg_gpuRefreshIntervalMs = currentValue
+    }
+
+    Kirigami.Heading {
+        Kirigami.FormData.isSection: true
+        level: 3
+        text: qsTr("Graphs")
+    }
+
+    QtControls.CheckBox { id: showGraphs; text: qsTr("Show graphs") }
+    QtControls.CheckBox {
+        id: showCpuGraph
+        text: qsTr("Show CPU graph")
+        enabled: showGraphs.checked && showCpu.checked
+    }
+    QtControls.CheckBox {
+        id: showMemoryGraph
+        text: qsTr("Show memory graph")
+        enabled: showGraphs.checked && showMemory.checked
+    }
+    QtControls.CheckBox {
+        id: showGpuGraph
+        text: qsTr("Show GPU graph")
+        enabled: showGraphs.checked && showGpu.checked
+    }
+    QtControls.CheckBox {
+        id: showNetworkGraph
+        text: qsTr("Show network graph")
+        enabled: showGraphs.checked && showNetwork.checked
+    }
+
+    QtControls.ComboBox {
+        Kirigami.FormData.label: qsTr("History length:")
+        enabled: showGraphs.checked
+        textRole: "label"
+        valueRole: "count"
+        model: [
+            { "label": qsTr("30 samples"), "count": 30 },
+            { "label": qsTr("60 samples"), "count": 60 },
+            { "label": qsTr("120 samples"), "count": 120 }
+        ]
+        currentIndex: configPage.optionIndex(configPage.cfg_historySampleCount,
+                                             [30, 60, 120], 1)
+        onActivated: configPage.cfg_historySampleCount = currentValue
     }
 
     Kirigami.Heading {

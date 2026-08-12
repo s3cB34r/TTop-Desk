@@ -38,6 +38,11 @@ Item {
     readonly property bool showGpuMemory: Plasmoid.configuration.showGpuMemory
     readonly property bool showGpuTemperature: Plasmoid.configuration.showGpuTemperature
     readonly property bool showGpuProgressBars: Plasmoid.configuration.showGpuProgressBars
+    readonly property bool showGraphs: Plasmoid.configuration.showGraphs
+    readonly property bool showCpuGraph: Plasmoid.configuration.showCpuGraph
+    readonly property bool showMemoryGraph: Plasmoid.configuration.showMemoryGraph
+    readonly property bool showGpuGraph: Plasmoid.configuration.showGpuGraph
+    readonly property bool showNetworkGraph: Plasmoid.configuration.showNetworkGraph
     readonly property bool showNetworkRx: Plasmoid.configuration.showNetworkRx
     readonly property bool showNetworkTx: Plasmoid.configuration.showNetworkTx
     readonly property bool showDiskRead: Plasmoid.configuration.showDiskRead
@@ -72,6 +77,9 @@ Item {
     readonly property int safeGpuRefreshIntervalMs:
         Configuration.allowedInteger(Plasmoid.configuration.gpuRefreshIntervalMs,
                                      [500, 1000, 2000, 5000], 1000)
+    readonly property int safeHistorySampleCount:
+        Configuration.allowedInteger(Plasmoid.configuration.historySampleCount,
+                                     [30, 60, 120], 60)
 
     function validRefreshInterval(value) {
         return Configuration.allowedInteger(value, [500, 1000, 2000, 5000], 1000);
@@ -150,6 +158,12 @@ Item {
             showGpuMemory: root.showGpuMemory
             showGpuTemperature: root.showGpuTemperature
             showGpuProgressBars: root.showGpuProgressBars
+            showGraphs: root.showGraphs
+            showCpuGraph: root.showCpuGraph
+            showMemoryGraph: root.showMemoryGraph
+            showGpuGraph: root.showGpuGraph
+            showNetworkGraph: root.showNetworkGraph
+            historySampleCount: root.safeHistorySampleCount
             showNetworkRx: root.showNetworkRx
             showNetworkTx: root.showNetworkTx
             showDiskRead: root.showDiskRead

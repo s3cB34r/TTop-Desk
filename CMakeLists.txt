@@ -3,7 +3,7 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(ttop-desk VERSION 0.1.12 LANGUAGES CXX)
+project(ttop-desk VERSION 0.1.13 LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)

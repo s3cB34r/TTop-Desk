@@ -55,6 +55,8 @@ Item {
         property string temperatureSeverity: "normal"
         property string networkRxDisplayText: "1.0 MiB/s"
         property string networkTxDisplayText: "512 KiB/s"
+        property real networkRxBytesPerSecond: 1048576
+        property real networkTxBytesPerSecond: 524288
         property string networkState: "available"
         property string diskReadDisplayText: "2.0 MiB/s"
         property string diskWriteDisplayText: "1.0 MiB/s"

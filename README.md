@@ -4,6 +4,14 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
+Milestone 1.13 adds lightweight live-history sparklines for CPU, RAM, NVIDIA
+GPU utilization, and network receive/transmit throughput. History is held only
+in bounded QML memory, is never persisted or transmitted, and supports 30, 60,
+or 120 samples. Graphs are enabled by default. CPU, RAM, and GPU use fixed
+0–100% scales, while the combined RX/TX graph uses the current bounded window's
+maximum with a safe floor and 10% headroom. Native histories remain independent
+of backend availability.
+
 Milestone 1.12 adds backend-powered NVIDIA GPU monitoring through a minimal
 read-only `ctypes` binding to `libnvidia-ml.so.1`. The full representation
 shows GPU utilization, VRAM used/total and percentage, GPU temperature, and
@@ -56,8 +64,8 @@ TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
 DataEngine without its former backend. These current production metrics remain
 Plasma-native and do not depend on the optional local backend foundation.
 
-SMART data, GPU monitoring, disk temperatures, and process controls remain
-future milestones, as does integration with a shared TTop Core backend.
+SMART data, disk temperatures, and process controls remain future milestones,
+as does integration with a shared TTop Core backend.
 
 ## Prerequisites
 
@@ -80,7 +88,7 @@ Open the settings by right-clicking TTop Desk and choosing **Configure TTop
 Desk…**. Changes apply to the running widget and are stored by Plasma; no Plasma
 restart is required.
 
-The six settings groups are **General**, **Display**, **Metrics**,
+The settings groups are **General**, **Display**, **Metrics**, **Graphs**,
 **Processes**, **Refresh**, and **Appearance**. The visible title defaults to
 `TTop Desk`, is trimmed to 40 characters, and can be edited without changing
 the plugin ID. Header, CPU, RAM, temperature, network, disk I/O, filesystems,
@@ -94,6 +102,14 @@ remain visible. Hidden sections and controls contribute no layout height.
 GPU display is enabled by default. GPU utilization, VRAM, temperature, and GPU
 progress bars can be hidden independently, and its refresh interval can be
 500 ms, 1, 2, or 5 seconds. Compact details optionally add only GPU utilization.
+
+CPU, memory, GPU utilization, and combined network RX/TX sparklines are enabled
+by default and can be hidden together or independently. History length is 60
+samples by default, with 30 and 120 also available. Samples follow existing
+metric refresh events without an additional timer. History is bounded,
+in-memory only, and discarded with the widget; it is not telemetry and is not
+written to disk. If the backend stops, GPU history pauses and clears while
+CPU, RAM, and network histories continue normally.
 
 The read-only process section displays 3, 4, or 5 rows, refreshes every 1, 2,
 or 5 seconds, and can sort by CPU or resident memory. The provider sends the
