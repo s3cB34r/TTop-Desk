@@ -13,6 +13,11 @@ All notable user-visible changes to TTop Desk are documented here.
 - Per-widget English, German, and system-default language selection.
 - Accessibility, HiDPI, localization, visual-regression, and release-QA coverage.
 - User-level release installer, backend service, safe uninstaller, and reproducible release artifacts.
+- Clean-profile release-candidate validation and public GitHub documentation.
+
+### Fixed
+
+- Compact CPU/RAM percentages no longer elide at the representation's preferred width.
 
 ### Known limitations
 

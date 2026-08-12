@@ -26,6 +26,15 @@ Item {
         return null;
     }
 
+    function findByText(item, expected) {
+        if (typeof item.text !== "undefined" && item.text === expected) return item;
+        for (var index = 0; index < item.children.length; ++index) {
+            var match = findByText(item.children[index], expected);
+            if (match !== null) return match;
+        }
+        return null;
+    }
+
     QtObject {
         id: metrics
         property string cpuState: "available"
@@ -71,6 +80,14 @@ Item {
         var graph = findByObjectName(compact, "compactSparkline");
         var baselineWidth = compact.implicitWidth;
         var baselineHeight = compact.implicitHeight;
+        var cpuValue = findByText(compact, "25%");
+        var memoryValue = findByText(compact, "40%");
+        if (cpuValue === null || memoryValue === null
+                || cpuValue.contentWidth > cpuValue.width + 0.5
+                || memoryValue.contentWidth > memoryValue.width + 0.5) {
+            fail("default compact percentages are elided at preferred width");
+            return;
+        }
         if (graph.visible) {
             fail("compact graph changed the default compact view");
             return;

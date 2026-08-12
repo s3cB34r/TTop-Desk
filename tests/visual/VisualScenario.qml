@@ -13,11 +13,14 @@ Rectangle {
 
     property string scenarioName: "full-default"
     property string outputPath: "capture.png"
+    property real representationWidthOverride: 0
     readonly property bool compactScenario: scenarioName.indexOf("compact-") === 0
     readonly property int captureMargin: PlasmaCore.Units.smallSpacing
     readonly property Item representation: representationLoader.item
 
-    width: representation !== null ? Math.ceil(representation.implicitWidth) + captureMargin * 2 : 320
+    width: representation !== null
+           ? Math.ceil(Math.max(representation.implicitWidth, representationWidthOverride))
+             + captureMargin * 2 : 320
     height: representation !== null ? Math.ceil(representation.implicitHeight) + captureMargin * 2 : 640
     color: PlasmaCore.Theme.backgroundColor
 
@@ -85,9 +88,9 @@ Rectangle {
         property int processCount: processEntries.length
         readonly property var fixedProcesses: [
             { "pid": 1842, "name": "plasmashell", "cpuPercent": 8.2, "memoryBytes": 482344960 },
-            { "pid": 2217, "name": "firefox", "cpuPercent": 5.7, "memoryBytes": 1673527296 },
+            { "pid": 2217, "name": "systemsettings", "cpuPercent": 5.7, "memoryBytes": 1673527296 },
             { "pid": 913, "name": "kwin_x11", "cpuPercent": 3.1, "memoryBytes": 301989888 },
-            { "pid": 2740, "name": "codex", "cpuPercent": 1.8, "memoryBytes": 356515840 },
+            { "pid": 2740, "name": "konsole", "cpuPercent": 1.8, "memoryBytes": 356515840 },
             { "pid": 1, "name": "systemd", "cpuPercent": 0.2, "memoryBytes": 25165824 }
         ]
     }
@@ -114,7 +117,8 @@ Rectangle {
             metricsProvider: metrics
             backendProvider: backend
             historyProvider: history
-            width: implicitWidth
+            width: harness.representationWidthOverride > 0
+                   ? harness.representationWidthOverride : implicitWidth
             height: implicitHeight
             showCpu: true
             showMemory: true

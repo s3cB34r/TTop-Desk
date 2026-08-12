@@ -1,97 +1,38 @@
 # TTop Desk
 
-TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
-provide a compact graphical companion to the wider TTop ecosystem while
-remaining independent from the existing TTop CLI project.
+TTop Desk is a lightweight KDE Plasma 5 system-monitor widget with live native
+metrics, an optional local process/NVIDIA GPU backend, history graphs, and
+per-widget customization. Version 0.9.0 is the first public beta candidate.
 
-Version 0.9.0 is the first public beta release candidate. Milestone 1.16 adds
-reproducible Plasma-widget, backend, and full Linux release artifacts plus a
-user-only installer that does not depend on a repository checkout. Release
-installation keeps the backend under the user's data directory and its service
-under the user's systemd configuration; no administrator access is required.
+![TTop Desk full view showing CPU, RAM, GPU, network, disks, filesystems, and processes](docs/screenshots/full-default-dark.png)
 
-Milestone 1.15 prepares the widget for release localization and reproducible
-visual QA. All static interface, settings, tooltip, state, and accessibility
-text uses a per-widget Plasma 5 localization adapter backed by KDE translation
-catalogs. English is the default and fallback language, with a complete German
-catalog and an optional system-locale mode. A development-only visual
-harness covers eight bounded full/compact states at 1x, 1.5x, and 2x without
-changing widget configuration, backend behavior, scale settings, or the active
-theme. `scripts/release-check.sh` consolidates safe release validation.
+<p align="center">
+  <img src="docs/screenshots/compact-default-dark.png" alt="TTop Desk compact panel view" width="392">
+</p>
 
-Milestone 1.14 hardens sparklines for accessibility, Plasma theme contrast,
-and HiDPI rendering. Graphs now expose static accessible descriptions and
-tooltips without announcing every sample; network RX is solid while TX is
-dashed so color is not the only distinction. Canvas drawing stays in Qt 5
-logical coordinates so Qt Quick can apply the screen scale without clipping,
-while logical layout sizes remain unchanged. An
-optional single compact-view graph can show CPU, memory, GPU, or network
-history; it is disabled by default and hides when space or its selected metric
-is unavailable. History remains bounded and in-memory only, and no backend or
-protocol changes are involved.
+## Supported environment
 
-Milestone 1.13 adds lightweight live-history sparklines for CPU, RAM, NVIDIA
-GPU utilization, and network receive/transmit throughput. History is held only
-in bounded QML memory, is never persisted or transmitted, and supports 30, 60,
-or 120 samples. Graphs are enabled by default. CPU, RAM, and GPU use fixed
-0–100% scales, while the combined RX/TX graph uses the current bounded window's
-maximum with a safe floor and 10% headroom. Native histories remain independent
-of backend availability.
+- Linux with KDE Plasma **5.27** and Qt **5.15**
+- Primary validation: Linux Mint based on Ubuntu 24.04, Plasma 5.27.12
+- User-level installation only; no root access or `sudo`
+- Plasma 6 is not supported by the 0.9.x release line
 
-Milestone 1.12 adds backend-powered NVIDIA GPU monitoring through a minimal
-read-only `ctypes` binding to `libnvidia-ml.so.1`. The full representation
-shows GPU utilization, VRAM used/total and percentage, GPU temperature, and
-the model name. Multiple NVIDIA devices are represented by the backend; the
-widget displays index 0 by default. No `nvidia-smi` polling or new Python
-package is required.
+## Features
 
-Milestone 1.11 adds live, persistent customization for the widget title,
-section and sub-element visibility, process sorting and row limits, refresh
-intervals, spacing, and theme-aware background appearance. Everything remains
-enabled by default, and hidden sections release their layout space.
+- CPU utilization, RAM usage, and CPU/package temperature
+- Network RX/TX, disk read/write throughput, and filesystem capacity
+- NVIDIA GPU utilization, VRAM, and temperature through optional NVML
+- Bounded read-only Top Processes with CPU and RSS memory
+- Full and compact representations with live history sparklines
+- Configurable sections, refresh rates, process sorting, appearance, spacing,
+  opacity, compact graphs, and widget title
+- Per-widget English, German, or system-default language
+- Theme-aware colors, accessibility descriptions, and HiDPI-safe graphs
 
-Milestone 1.10 added an optional `systemd --user` service for normal daily
-backend use and a bounded protocol-v1 process request. The widget now asks the
-backend for only its configured CPU-sorted rows and falls back to the original
-snapshot request when connected to a Milestone 1.8/1.9 backend.
-
-Milestone 1.9 completed the first backend-to-widget path with a read-only
-**TOP PROCESSES** section in the full representation. It shows up to five
-CPU-sorted processes with one-decimal CPU usage and resident memory, refreshes
-every two seconds by default, and becomes `Backend unavailable` without
-affecting Plasma-native metrics when the local backend is stopped.
-
-Milestone 1.8 added the minimal local backend foundation for advanced metrics
-that Plasma 5 cannot provide. Existing CPU, RAM, network, temperature,
-filesystem, and disk-I/O metrics remain Plasma-native and independent.
-
-Milestone 1.7a added a development-only process sensor capability probe and a
-defensive normalization provider. There is no visible process UI yet, and the
-existing widget layout is unchanged. Process availability depends entirely on
-what the Plasma 5 system-monitor sensors expose on the host; no external
-commands or backend are used. Milestone 1.7b will proceed only if this probe
-confirms usable per-process data.
-
-Milestone 1.6 provides separate compact and full
-representations, persistent Plasma settings, per-section visibility controls,
-safe refresh interval controls, theme-aware styling, and a configurable
-filesystem row limit. All live metrics from Milestone 1.5 remain available:
-total CPU utilization, physical memory usage, network receive/transmit
-throughput, CPU temperature, filesystem capacity, and disk read/write
-throughput on KDE Plasma 5.27.
-
-By default, CPU, memory, network, temperature, and disk I/O refresh once per
-second. Filesystem capacity refreshes every 15 seconds. Memory and filesystems
-use binary sizes; network and disk rates use B/s, KiB/s, MiB/s, or GiB/s;
-temperature is formatted in degrees Celsius.
-
-TTop Desk prefers Plasma's `systemmonitor` DataEngine and falls back to Plasma
-5's native `ksystemstats` sensor API when a distribution ships the legacy
-DataEngine without its former backend. These current production metrics remain
-Plasma-native and do not depend on the optional local backend foundation.
-
-SMART data, disk temperatures, and process controls remain future milestones,
-as does integration with a shared TTop Core backend.
+CPU, RAM, temperature, network, disk-I/O, and filesystem metrics use Plasma
+APIs and work without the backend. Top Processes and NVIDIA GPU monitoring use
+a private `systemd --user` service and mode-`0600` Unix socket. The backend
+does not use TCP, root privileges, or full process command lines.
 
 ## Quick install from a release bundle
 
@@ -128,10 +69,14 @@ After a native runtime upgrade, an already-running widget may need to be
 reopened or removed and added again. The installer never restarts the Plasma
 desktop or changes the system locale.
 
-## Prerequisites
+## Requirements
 
-The primary target is KDE Plasma 5.27.12 on Linux Mint based on Ubuntu 24.04.
-For direct repository development and installation, the system needs:
+The release installer requires Plasma 5, `kpackagetool5`, Python 3 with
+`psutil`, and a working systemd user session. It reports missing dependencies
+but never installs distribution packages automatically. NVIDIA's
+`libnvidia-ml.so.1` is optional.
+
+For direct repository development, the system additionally needs:
 
 - KDE Plasma 5 and the Plasma Framework runtime
 - `plasmoidviewer` from the Plasma SDK (`plasma-sdk` on Ubuntu-family systems)
@@ -144,6 +89,16 @@ For direct repository development and installation, the system needs:
 
 Package names can vary between distributions. This repository does not install
 or modify system packages.
+
+## Known limitations
+
+- Plasma 6 is not supported yet.
+- GPU metrics currently support NVIDIA/NVML only; AMD and Intel providers are
+  future work.
+- Top Processes and NVIDIA GPU metrics require the user backend.
+- KDE Store publication has not been performed.
+- Existing widget instances may need to be reopened or removed and added again
+  after a native runtime upgrade. The installer does not restart Plasma.
 
 ## Widget settings and representations
 

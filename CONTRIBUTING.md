@@ -4,6 +4,35 @@ TTop Desk targets KDE Plasma 5.27 and Qt 5.15. Keep production QML compatible
 with Plasma 5 APIs, preserve the versioned local backend protocol, and do not
 introduce system commands into metric acquisition.
 
+## Development environment
+
+The primary development target is Linux Mint based on Ubuntu 24.04 with Plasma
+5.27.12 and Qt 5.15. Development requires CMake, a C++ compiler, Qt 5 and KDE
+Frameworks 5 development files, ECM, gettext, Python 3 with `psutil`,
+`qmlscene`, `qmllint`, `plasmoidviewer`, and `kpackagetool5`. Package names vary
+by distribution. Project scripts must not invoke `sudo` or install operating-
+system packages.
+
+## Change expectations
+
+- Keep changes focused and preserve Plasma 5 API compatibility.
+- Keep native metrics independent from the optional backend.
+- Do not change protocol version, process/GPU acquisition, or service security
+  boundaries without explicit design and regression coverage.
+- Use translation-ready complete strings and preserve dynamic implicit sizing.
+- Add bounded tests for behavior changes and avoid private data in fixtures,
+  logs, and screenshots.
+- Run `bash -n scripts/*.sh`, backend/configuration tests, relevant QML probes,
+  `qmllint`, `git diff --check`, and `./scripts/release-check.sh` before review.
+
+## Reporting issues
+
+Use the GitHub bug template and include distribution, Plasma, Qt, and TTop Desk
+versions, exact reproduction steps, installation method, and bounded relevant
+logs. Include backend status for process/GPU issues. Remove usernames, private
+paths, tokens, and full process command lines. Security-sensitive reports
+belong in the private process documented in `SECURITY.md`.
+
 ## Localization
 
 Production QML routes static text through `ttopTr()`. A small native Plasma 5

@@ -128,6 +128,37 @@ check_release_service_template() {
     systemd-analyze --user verify "${instantiated_unit}"
 }
 
+check_github_readiness() {
+    python3 -c 'import pathlib
+required = [
+    pathlib.Path("SECURITY.md"), pathlib.Path("CONTRIBUTING.md"),
+    pathlib.Path(".github/ISSUE_TEMPLATE/bug_report.yml"),
+    pathlib.Path(".github/ISSUE_TEMPLATE/feature_request.yml"),
+    pathlib.Path(".github/pull_request_template.md"),
+    pathlib.Path("docs/GITHUB-READINESS.md"),
+    pathlib.Path("docs/RELEASE-CHECKLIST.md"),
+    pathlib.Path("docs/RC-QA-0.9.0.md"),
+]
+for path in required:
+    assert path.is_file() and path.stat().st_size > 0, f"missing GitHub document: {path}"
+for path in required[2:4]:
+    text = path.read_text(encoding="utf-8")
+    assert "name:" in text and "description:" in text and "body:" in text
+    assert "\t" not in text, f"tab indentation in {path}"
+try:
+    import yaml
+except ImportError:
+    yaml = None
+if yaml is not None:
+    for path in required[2:4]:
+        parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
+        assert isinstance(parsed, dict) and isinstance(parsed.get("body"), list)
+screenshots = sorted(pathlib.Path("docs/screenshots").glob("*.png"))
+assert 2 <= len(screenshots) <= 4
+for path in screenshots:
+    assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")'
+}
+
 check_installed_service_unit() {
     local unit_path="${XDG_CONFIG_HOME:-${HOME}/.config}/systemd/user/ttop-desk-backend.service"
     systemd-analyze --user verify "${unit_path}"
@@ -173,6 +204,7 @@ if command -v python3 >/dev/null 2>&1; then
         python3 scripts/check-translations.py
     run_check "Plasma package structure" check_package_structure
     run_check "Release source/version consistency" python3 scripts/validate-release.py
+    run_check "GitHub readiness documents and screenshots" check_github_readiness
 else
     fail "Python 3 is required"
 fi

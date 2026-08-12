@@ -92,13 +92,19 @@ Item {
             : ttopTr("Network receive and transmit history, approximately %1 seconds",
                      [compactGraphSeconds])
 
+    readonly property real horizontalMetricWidth:
+        PlasmaCore.Units.gridUnit * ((showCpu ? 4.5 : 0) + (showMemory ? 4.5 : 0)
+        + (compactModeDetails && showNetwork ? 8 : 0)
+        + (compactModeDetails && showTemperature ? 5 : 0)
+        + (compactModeDetails && showGpu ? 5 : 0))
+    readonly property real horizontalSpacingWidth:
+        PlasmaCore.Units.largeSpacing * Math.max(0, visibleMetricCount - 1)
+        + PlasmaCore.Units.smallSpacing * 2
+
     Layout.preferredWidth: vertical
                            ? PlasmaCore.Units.gridUnit * 5
-                           : PlasmaCore.Units.gridUnit * Math.max(6,
-                               (showCpu ? 4 : 0) + (showMemory ? 4 : 0)
-                               + (compactModeDetails && showNetwork ? 8 : 0)
-                               + (compactModeDetails && showTemperature ? 5 : 0)
-                               + (compactModeDetails && showGpu ? 5 : 0))
+                           : Math.max(PlasmaCore.Units.gridUnit * 6,
+                                      horizontalMetricWidth + horizontalSpacingWidth)
     Layout.preferredHeight: vertical
                             ? PlasmaCore.Units.gridUnit
                               * Math.max(2, visibleMetricCount * 1.6)
@@ -122,7 +128,7 @@ Item {
         PlasmaCore.ToolTipArea {
             visible: compactView.showCpu
             Layout.fillWidth: compactView.vertical
-            Layout.preferredWidth: PlasmaCore.Units.gridUnit * 4
+            Layout.preferredWidth: PlasmaCore.Units.gridUnit * 4.5
             Layout.preferredHeight: PlasmaCore.Units.gridUnit
             mainText: compactView.ttopTr("CPU usage")
             subText: compactView.metricsProvider.cpuState === "available"
@@ -165,7 +171,7 @@ Item {
         PlasmaCore.ToolTipArea {
             visible: compactView.showMemory
             Layout.fillWidth: compactView.vertical
-            Layout.preferredWidth: PlasmaCore.Units.gridUnit * 4
+            Layout.preferredWidth: PlasmaCore.Units.gridUnit * 4.5
             Layout.preferredHeight: PlasmaCore.Units.gridUnit
             mainText: compactView.ttopTr("Memory usage")
             subText: compactView.metricsProvider.memoryState === "available"

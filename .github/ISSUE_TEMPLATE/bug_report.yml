@@ -1,0 +1,79 @@
+name: Bug report
+description: Report a reproducible problem with TTop Desk.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve TTop Desk. Please avoid sharing private paths, tokens, or full process command lines.
+  - type: input
+    id: version
+    attributes:
+      label: TTop Desk version
+      placeholder: 0.9.0
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Linux distribution
+      placeholder: Linux Mint 22
+    validations:
+      required: true
+  - type: input
+    id: plasma
+    attributes:
+      label: KDE Plasma version
+      description: Run `plasmashell --version`.
+      placeholder: 5.27.12
+    validations:
+      required: true
+  - type: input
+    id: qt
+    attributes:
+      label: Qt version
+      description: Run `qmake --version` if available.
+      placeholder: 5.15.x
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: Tell us what you did, what happened, and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: backend
+    attributes:
+      label: Backend status
+      description: Paste `systemctl --user status ttop-desk-backend --no-pager`. Remove usernames or paths if desired.
+      render: shell
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste only relevant lines from `journalctl --user -u ttop-desk-backend --no-pager -n 100`. Do not include full process command lines or secrets.
+      render: shell
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Full Linux release bundle
+        - Plasmoid artifact only
+        - Development checkout
+        - Other user-level package
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I reproduced this with the stated TTop Desk version.
+          required: true
+        - label: I removed sensitive information from logs and screenshots.
+          required: true

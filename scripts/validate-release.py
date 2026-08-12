@@ -39,8 +39,10 @@ def assert_clean_name(name: str) -> None:
         raise AssertionError(f"developer/cache entry in release: {name}")
 
 
-def assert_portable_bytes(name: str, payload: bytes) -> None:
-    for needle in FORBIDDEN_BYTES:
+def assert_portable_bytes(
+    name: str, payload: bytes, extra_needles: tuple[bytes, ...] = ()
+) -> None:
+    for needle in FORBIDDEN_BYTES + extra_needles:
         if needle in payload:
             raise AssertionError(f"development path leak in {name}: {needle.decode()}")
 
@@ -68,6 +70,17 @@ def validate_source(root: Path) -> str:
         "LICENSE",
         "CHANGELOG.md",
         "RELEASE-NOTES.md",
+        "SECURITY.md",
+        "CONTRIBUTING.md",
+        ".github/ISSUE_TEMPLATE/bug_report.yml",
+        ".github/ISSUE_TEMPLATE/feature_request.yml",
+        ".github/pull_request_template.md",
+        "docs/GITHUB-READINESS.md",
+        "docs/RELEASE-CHECKLIST.md",
+        "docs/RC-QA-0.9.0.md",
+        "docs/screenshots/full-default-dark.png",
+        "docs/screenshots/compact-default-dark.png",
+        "docs/screenshots/process-focused-dark.png",
         "release/install.sh",
         "release/uninstall.sh",
         "release/README.md",
@@ -75,6 +88,35 @@ def validate_source(root: Path) -> str:
         "release/ttop-desk-backend.service.in",
     ):
         assert (root / required).is_file(), f"missing release source: {required}"
+
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    for heading in (
+        "## Supported environment",
+        "## Features",
+        "## Quick install from a release bundle",
+        "## Requirements",
+        "## Known limitations",
+        "## License",
+    ):
+        assert heading in readme, f"public README section missing: {heading}"
+    for screenshot in (
+        "docs/screenshots/full-default-dark.png",
+        "docs/screenshots/compact-default-dark.png",
+    ):
+        assert screenshot in readme, f"README screenshot missing: {screenshot}"
+
+    release_notes = (root / "RELEASE-NOTES.md").read_text(encoding="utf-8")
+    changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
+    security = (root / "SECURITY.md").read_text(encoding="utf-8")
+    license_text = (root / "LICENSE").read_text(encoding="utf-8")
+    assert f"TTop Desk {version}" in release_notes
+    assert f"## {version}" in changelog
+    assert "GitHub" in security and "Security" in security
+    assert "GNU GENERAL PUBLIC LICENSE" in license_text
+    for screenshot in (root / "docs/screenshots").glob("*.png"):
+        assert screenshot.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"), (
+            f"invalid public screenshot: {screenshot}"
+        )
 
     for script_name in ("release/install.sh", "release/uninstall.sh"):
         script = (root / script_name).read_text(encoding="utf-8")
@@ -135,6 +177,10 @@ def validate_checksums(dist: Path) -> None:
 
 
 def validate_dist(root: Path, dist: Path, version: str) -> None:
+    extra_needles = (
+        str(root).encode("utf-8"),
+        str(Path.home()).encode("utf-8"),
+    )
     expected_files = {
         "CHANGELOG.md",
         "LICENSE",
@@ -172,7 +218,7 @@ def validate_dist(root: Path, dist: Path, version: str) -> None:
     assert packaged_metadata["KPlugin"]["Version"] == version
     assert not any(name.startswith("package/") for name in plasmoid)
     for name, payload in plasmoid.items():
-        assert_portable_bytes(f"{plasmoid_name}:{name}", payload)
+        assert_portable_bytes(f"{plasmoid_name}:{name}", payload, extra_needles)
 
     backend_name = f"ttop-desk-backend-{version}.tar.gz"
     backend = tar_entries(dist / backend_name)
@@ -191,7 +237,7 @@ def validate_dist(root: Path, dist: Path, version: str) -> None:
     assert required_backend <= backend.keys(), "backend archive is incomplete"
     assert all(name.startswith(backend_root) for name in backend)
     for name, payload in backend.items():
-        assert_portable_bytes(f"{backend_name}:{name}", payload)
+        assert_portable_bytes(f"{backend_name}:{name}", payload, extra_needles)
 
     bundle_name = f"ttop-desk-{version}-linux.tar.gz"
     bundle = tar_entries(dist / bundle_name)
@@ -211,7 +257,7 @@ def validate_dist(root: Path, dist: Path, version: str) -> None:
     }
     assert required_bundle == bundle.keys(), "full release bundle contents differ"
     for name, payload in bundle.items():
-        assert_portable_bytes(f"{bundle_name}:{name}", payload)
+        assert_portable_bytes(f"{bundle_name}:{name}", payload, extra_needles)
 
     # Validate the checksums embedded in the full bundle without extracting it.
     checksum_payload = bundle[bundle_root + "SHA256SUMS"].decode("utf-8")
