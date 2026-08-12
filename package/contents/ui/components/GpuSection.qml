@@ -7,10 +7,14 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.components 2.0 as PlasmaComponents
+import "../TTop/Runtime"
 
 ColumnLayout {
     id: section
 
+    Layout.minimumWidth: 0
+
+    property string languageMode: "en"
     property var backendProvider
     property bool showIcon: true
     property bool showLabel: true
@@ -20,7 +24,7 @@ ColumnLayout {
     property bool showProgressBars: true
     property bool showGraph: false
     property var graphValues: []
-    property string graphAccessibleName: qsTr("GPU utilization history")
+    property string graphAccessibleName: ttopTr("GPU utilization history")
     property string graphDescription: ""
     property string graphTooltip: ""
     property color graphBackgroundColor: PlasmaCore.Theme.backgroundColor
@@ -30,21 +34,25 @@ ColumnLayout {
                                       && backendProvider.gpuState === "available"
     spacing: denseMode ? 0 : PlasmaCore.Units.smallSpacing
 
+    function ttopTr(source, values) {
+        return ttopTranslations.text(languageMode, source, values || []);
+    }
+
     function statusText() {
-        if (backendProvider === null) return qsTr("Backend unavailable");
+        if (backendProvider === null) return ttopTr("Backend unavailable");
         if (backendProvider.backendState === "unavailable"
                 || backendProvider.backendState === "error") {
-            return qsTr("Backend unavailable");
+            return ttopTr("Backend unavailable");
         }
-        if (backendProvider.gpuState === "detecting") return qsTr("Detecting…");
-        if (backendProvider.gpuState === "unavailable") return qsTr("GPU unavailable");
-        if (backendProvider.gpuState === "error") return qsTr("GPU error");
+        if (backendProvider.gpuState === "detecting") return ttopTr("Detecting…");
+        if (backendProvider.gpuState === "unavailable") return ttopTr("GPU unavailable");
+        if (backendProvider.gpuState === "error") return ttopTr("GPU error");
         return "";
     }
 
     SectionHeader {
         Layout.fillWidth: true
-        title: qsTr("GPU")
+        title: section.ttopTr("GPU")
         iconName: "video-display"
         showIcon: section.showIcon
         showLabel: section.showLabel
@@ -60,27 +68,30 @@ ColumnLayout {
         color: PlasmaCore.Theme.disabledTextColor
         font.pointSize: PlasmaCore.Theme.smallestFont.pointSize
         elide: Text.ElideRight
-        Accessible.name: qsTr("GPU model %1").arg(text)
+        Accessible.name: section.ttopTr("GPU model %1", [text])
     }
 
     RowLayout {
         visible: section.available && section.showUtilization
         Layout.fillWidth: true
+        Layout.minimumWidth: 0
         spacing: PlasmaCore.Units.smallSpacing
 
         PlasmaComponents.Label {
             visible: section.showLabel
             Layout.fillWidth: true
-            text: qsTr("UTILIZATION")
+            Layout.minimumWidth: 0
+            text: section.ttopTr("UTILIZATION")
             color: PlasmaCore.Theme.textColor
             font.bold: true
         }
 
         PlasmaComponents.Label {
             Layout.alignment: Qt.AlignRight
+            Layout.minimumWidth: 0
             text: isFinite(section.backendProvider.gpuUtilizationPercent)
                   ? section.backendProvider.gpuUtilizationPercent.toFixed(1) + "%"
-                  : qsTr("Unavailable")
+                  : section.ttopTr("Unavailable")
             color: isFinite(section.backendProvider.gpuUtilizationPercent)
                    ? PlasmaCore.Theme.highlightColor : PlasmaCore.Theme.disabledTextColor
             font.family: "monospace"
@@ -100,6 +111,7 @@ ColumnLayout {
     }
 
     Sparkline {
+        languageMode: section.languageMode
         objectName: "gpuSparkline"
         visible: section.available && section.showGraph
         Layout.fillWidth: true
@@ -116,21 +128,24 @@ ColumnLayout {
     RowLayout {
         visible: section.available && section.showMemory
         Layout.fillWidth: true
+        Layout.minimumWidth: 0
         spacing: PlasmaCore.Units.smallSpacing
 
         PlasmaComponents.Label {
             visible: section.showLabel
             Layout.fillWidth: true
-            text: qsTr("VRAM")
+            Layout.minimumWidth: 0
+            text: section.ttopTr("VRAM")
             color: PlasmaCore.Theme.textColor
             font.bold: true
         }
 
         PlasmaComponents.Label {
             Layout.alignment: Qt.AlignRight
+            Layout.minimumWidth: 0
             Layout.maximumWidth: section.width * 0.8
             text: section.backendProvider.gpuMemoryDisplayText !== ""
-                  ? section.backendProvider.gpuMemoryDisplayText : qsTr("Unavailable")
+                  ? section.backendProvider.gpuMemoryDisplayText : section.ttopTr("Unavailable")
             color: section.backendProvider.gpuMemoryDisplayText !== ""
                    ? PlasmaCore.Theme.highlightColor : PlasmaCore.Theme.disabledTextColor
             font.family: "monospace"
@@ -154,20 +169,23 @@ ColumnLayout {
     RowLayout {
         visible: section.available && section.showTemperature
         Layout.fillWidth: true
+        Layout.minimumWidth: 0
         spacing: PlasmaCore.Units.smallSpacing
 
         PlasmaComponents.Label {
             visible: section.showLabel
             Layout.fillWidth: true
-            text: qsTr("GPU TEMP")
+            Layout.minimumWidth: 0
+            text: section.ttopTr("GPU TEMP")
             color: PlasmaCore.Theme.textColor
             font.bold: true
         }
 
         PlasmaComponents.Label {
             Layout.alignment: Qt.AlignRight
+            Layout.minimumWidth: 0
             text: section.backendProvider.gpuTemperatureDisplayText !== ""
-                  ? section.backendProvider.gpuTemperatureDisplayText : qsTr("Unavailable")
+                  ? section.backendProvider.gpuTemperatureDisplayText : section.ttopTr("Unavailable")
             color: section.backendProvider.gpuTemperatureDisplayText !== ""
                    ? PlasmaCore.Theme.highlightColor : PlasmaCore.Theme.disabledTextColor
             font.family: "monospace"

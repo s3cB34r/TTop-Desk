@@ -11,6 +11,8 @@ import org.kde.plasma.components 2.0 as PlasmaComponents
 RowLayout {
     id: header
 
+    Layout.minimumWidth: 0
+
     property string title: ""
     property string iconName: ""
     property bool showIcon: true
@@ -29,6 +31,7 @@ RowLayout {
     PlasmaComponents.Label {
         visible: header.showLabel
         Layout.fillWidth: true
+        Layout.minimumWidth: 0
         text: header.title
         color: PlasmaCore.Theme.textColor
         font.bold: true
@@ -37,6 +40,7 @@ RowLayout {
 
     PlasmaComponents.Label {
         visible: header.statusText !== ""
+        Layout.minimumWidth: 0
         text: header.statusText
         color: PlasmaCore.Theme.disabledTextColor
         font.family: "monospace"

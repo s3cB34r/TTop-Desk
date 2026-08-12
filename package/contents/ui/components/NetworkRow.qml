@@ -7,10 +7,14 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.components 2.0 as PlasmaComponents
+import "../TTop/Runtime"
 
 ColumnLayout {
     id: row
 
+    Layout.minimumWidth: 0
+
+    property string languageMode: "en"
     property string rxText: ""
     property string txText: ""
     property bool showIcon: true
@@ -20,24 +24,28 @@ ColumnLayout {
     property bool showGraph: false
     property var rxHistory: []
     property var txHistory: []
-    property string graphAccessibleName: qsTr("Network receive and transmit history")
-    property string graphDescription: qsTr("Receive is solid; transmit is dashed")
-    property string graphTooltip: qsTr("RX solid · TX dashed · dynamically scaled")
+    property string graphAccessibleName: ttopTr("Network receive and transmit history")
+    property string graphDescription: ttopTr("Receive is solid; transmit is dashed")
+    property string graphTooltip: ttopTr("RX solid · TX dashed · dynamically scaled")
     property color graphBackgroundColor: PlasmaCore.Theme.backgroundColor
     // Supported states: "loading", "available", and "unavailable".
     property string availabilityState: "loading"
 
+    function ttopTr(source, values) {
+        return ttopTranslations.text(languageMode, source, values || []);
+    }
+
     readonly property bool available: availabilityState === "available"
     readonly property string statusText: availabilityState === "unavailable"
-                                                   ? "Unavailable"
+                                                   ? row.ttopTr("Unavailable")
                                                    : availabilityState === "loading"
-                                                     ? "Detecting…" : ""
+                                                     ? row.ttopTr("Detecting…") : ""
 
     spacing: 0
 
     SectionHeader {
         Layout.fillWidth: true
-        title: qsTr("NETWORK")
+        title: row.ttopTr("NETWORK")
         iconName: "network-wired"
         showIcon: row.showIcon
         showLabel: row.showLabel
@@ -46,13 +54,15 @@ ColumnLayout {
 
     RowLayout {
         Layout.fillWidth: true
+        Layout.minimumWidth: 0
         spacing: PlasmaCore.Units.largeSpacing
         visible: row.available
 
         PlasmaComponents.Label {
             visible: row.showRx
             Layout.fillWidth: true
-            text: "↓ RX  " + row.rxText
+            Layout.minimumWidth: 0
+            text: row.ttopTr("↓ RX  %1", [row.rxText])
             color: PlasmaCore.Theme.highlightColor
             font.family: "monospace"
             elide: Text.ElideRight
@@ -61,7 +71,8 @@ ColumnLayout {
         PlasmaComponents.Label {
             visible: row.showTx
             Layout.fillWidth: true
-            text: "↑ TX  " + row.txText
+            Layout.minimumWidth: 0
+            text: row.ttopTr("↑ TX  %1", [row.txText])
             color: PlasmaCore.Theme.highlightColor
             font.family: "monospace"
             horizontalAlignment: Text.AlignRight
@@ -70,6 +81,7 @@ ColumnLayout {
     }
 
     Sparkline {
+        languageMode: row.languageMode
         objectName: "networkSparkline"
         visible: row.available && row.showGraph && (row.showRx || row.showTx)
         Layout.fillWidth: true

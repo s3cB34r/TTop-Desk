@@ -7,11 +7,13 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.components 2.0 as PlasmaComponents
+import "TTop/Runtime"
 import "components" as Components
 
 Item {
     id: compactView
 
+    property string languageMode: "en"
     property var metricsProvider
     property var backendProvider
     property var historyProvider: null
@@ -25,8 +27,14 @@ Item {
     property bool showCompactGraphs: false
     property string compactGraphMetric: "cpu"
     property int historySampleCount: 60
+    property int metricRefreshIntervalMs: 1000
+    property int gpuRefreshIntervalMs: 1000
     property string widgetTitle: "TTop Desk"
     property int formFactor: PlasmaCore.Types.Planar
+
+    function ttopTr(source, values) {
+        return ttopTranslations.text(languageMode, source, values || []);
+    }
 
     readonly property bool vertical: formFactor === PlasmaCore.Types.Vertical
     readonly property string effectiveCompactGraphMetric:
@@ -65,10 +73,24 @@ Item {
         && height >= PlasmaCore.Units.gridUnit * 2
     readonly property int compactGraphHeight: 12
     readonly property string compactGraphName:
-        effectiveCompactGraphMetric === "cpu" ? qsTr("CPU history")
-        : effectiveCompactGraphMetric === "memory" ? qsTr("Memory usage history")
-        : effectiveCompactGraphMetric === "gpu" ? qsTr("GPU utilization history")
-        : qsTr("Network receive and transmit history")
+        effectiveCompactGraphMetric === "cpu" ? ttopTr("CPU history")
+        : effectiveCompactGraphMetric === "memory" ? ttopTr("Memory usage history")
+        : effectiveCompactGraphMetric === "gpu" ? ttopTr("GPU utilization history")
+        : ttopTr("Network receive and transmit history")
+    readonly property int compactGraphIntervalMs:
+        effectiveCompactGraphMetric === "gpu" ? gpuRefreshIntervalMs
+                                               : metricRefreshIntervalMs
+    readonly property int compactGraphSeconds:
+        Math.max(1, Math.round(historySampleCount * compactGraphIntervalMs / 1000))
+    readonly property string compactGraphAccessibleName:
+        effectiveCompactGraphMetric === "cpu"
+        ? ttopTr("CPU history, approximately %1 seconds", [compactGraphSeconds])
+        : effectiveCompactGraphMetric === "memory"
+          ? ttopTr("Memory usage history, approximately %1 seconds", [compactGraphSeconds])
+          : effectiveCompactGraphMetric === "gpu"
+            ? ttopTr("GPU utilization history, approximately %1 seconds", [compactGraphSeconds])
+            : ttopTr("Network receive and transmit history, approximately %1 seconds",
+                     [compactGraphSeconds])
 
     Layout.preferredWidth: vertical
                            ? PlasmaCore.Units.gridUnit * 5
@@ -102,11 +124,11 @@ Item {
             Layout.fillWidth: compactView.vertical
             Layout.preferredWidth: PlasmaCore.Units.gridUnit * 4
             Layout.preferredHeight: PlasmaCore.Units.gridUnit
-            mainText: qsTr("CPU usage")
+            mainText: compactView.ttopTr("CPU usage")
             subText: compactView.metricsProvider.cpuState === "available"
                      ? compactView.metricsProvider.cpuPercent.toFixed(1) + "%"
                      : compactView.metricsProvider.cpuState === "unavailable"
-                       ? qsTr("Unavailable") : qsTr("Detecting…")
+                       ? compactView.ttopTr("Unavailable") : compactView.ttopTr("Detecting…")
 
             RowLayout {
                 anchors.fill: parent
@@ -120,7 +142,7 @@ Item {
                 }
 
                 PlasmaComponents.Label {
-                    text: qsTr("CPU")
+                    text: compactView.ttopTr("CPU")
                     color: PlasmaCore.Theme.textColor
                     font.bold: true
                 }
@@ -145,11 +167,11 @@ Item {
             Layout.fillWidth: compactView.vertical
             Layout.preferredWidth: PlasmaCore.Units.gridUnit * 4
             Layout.preferredHeight: PlasmaCore.Units.gridUnit
-            mainText: qsTr("Memory usage")
+            mainText: compactView.ttopTr("Memory usage")
             subText: compactView.metricsProvider.memoryState === "available"
                      ? compactView.metricsProvider.memoryDisplayText
                      : compactView.metricsProvider.memoryState === "unavailable"
-                       ? qsTr("Unavailable") : qsTr("Detecting…")
+                       ? compactView.ttopTr("Unavailable") : compactView.ttopTr("Detecting…")
 
             RowLayout {
                 anchors.fill: parent
@@ -163,7 +185,7 @@ Item {
                 }
 
                 PlasmaComponents.Label {
-                    text: qsTr("RAM")
+                    text: compactView.ttopTr("RAM")
                     color: PlasmaCore.Theme.textColor
                     font.bold: true
                 }
@@ -188,13 +210,13 @@ Item {
             Layout.fillWidth: compactView.vertical
             Layout.preferredWidth: PlasmaCore.Units.gridUnit * 8
             Layout.preferredHeight: PlasmaCore.Units.gridUnit
-            mainText: qsTr("Network throughput")
+            mainText: compactView.ttopTr("Network throughput")
             subText: compactView.metricsProvider.networkState === "available"
-                     ? qsTr("Receive: %1\nTransmit: %2")
-                       .arg(compactView.metricsProvider.networkRxDisplayText)
-                       .arg(compactView.metricsProvider.networkTxDisplayText)
+                     ? compactView.ttopTr("Receive: %1\nTransmit: %2",
+                                          [compactView.metricsProvider.networkRxDisplayText,
+                                           compactView.metricsProvider.networkTxDisplayText])
                      : compactView.metricsProvider.networkState === "unavailable"
-                       ? qsTr("Unavailable") : qsTr("Detecting…")
+                       ? compactView.ttopTr("Unavailable") : compactView.ttopTr("Detecting…")
 
             RowLayout {
                 anchors.fill: parent
@@ -228,11 +250,11 @@ Item {
             Layout.fillWidth: compactView.vertical
             Layout.preferredWidth: PlasmaCore.Units.gridUnit * 5
             Layout.preferredHeight: PlasmaCore.Units.gridUnit
-            mainText: qsTr("CPU temperature")
+            mainText: compactView.ttopTr("CPU temperature")
             subText: compactView.metricsProvider.temperatureState === "available"
                      ? compactView.metricsProvider.temperatureDisplayText
                      : compactView.metricsProvider.temperatureState === "unavailable"
-                       ? qsTr("Unavailable") : qsTr("Detecting…")
+                       ? compactView.ttopTr("Unavailable") : compactView.ttopTr("Detecting…")
 
             RowLayout {
                 anchors.fill: parent
@@ -246,7 +268,7 @@ Item {
                 }
 
                 PlasmaComponents.Label {
-                    text: qsTr("TEMP")
+                    text: compactView.ttopTr("TEMP")
                     color: PlasmaCore.Theme.textColor
                     font.bold: true
                 }
@@ -272,14 +294,14 @@ Item {
             Layout.preferredWidth: PlasmaCore.Units.gridUnit * 5
             Layout.preferredHeight: PlasmaCore.Units.gridUnit
             mainText: compactView.backendProvider.gpuName !== ""
-                      ? compactView.backendProvider.gpuName : qsTr("GPU utilization")
+                      ? compactView.backendProvider.gpuName : compactView.ttopTr("GPU utilization")
             subText: compactView.backendProvider.gpuState === "available"
                      && isFinite(compactView.backendProvider.gpuUtilizationPercent)
                      ? compactView.backendProvider.gpuUtilizationPercent.toFixed(1) + "%"
                      : compactView.backendProvider.backendState === "unavailable"
-                       ? qsTr("Backend unavailable")
+                       ? compactView.ttopTr("Backend unavailable")
                        : compactView.backendProvider.gpuState === "unavailable"
-                         ? qsTr("GPU unavailable") : qsTr("Detecting…")
+                         ? compactView.ttopTr("GPU unavailable") : compactView.ttopTr("Detecting…")
 
             RowLayout {
                 anchors.fill: parent
@@ -293,7 +315,7 @@ Item {
                 }
 
                 PlasmaComponents.Label {
-                    text: qsTr("GPU")
+                    text: compactView.ttopTr("GPU")
                     color: PlasmaCore.Theme.textColor
                     font.bold: true
                 }
@@ -335,6 +357,7 @@ Item {
     }
 
     Components.Sparkline {
+        languageMode: compactView.languageMode
         id: compactGraph
         objectName: "compactSparkline"
         visible: compactView.compactGraphVisible
@@ -353,14 +376,15 @@ Item {
         minimumValue: 0
         maximumValue: 100
         secondaryDashed: true
-        accessibleName: compactView.compactGraphName + qsTr(", last %1 samples")
-                        .arg(compactView.historySampleCount)
+        accessibleName: compactView.compactGraphAccessibleName
         accessibleDescription: compactView.effectiveCompactGraphMetric === "network"
-                               ? qsTr("Receive is solid and transmit is dashed; numeric values remain authoritative")
-                               : qsTr("Supplementary history graph; numeric values remain authoritative")
+                               ? compactView.ttopTr("Receive is solid and transmit is dashed; numeric values remain authoritative")
+                               : compactView.ttopTr("Supplementary history graph; numeric values remain authoritative")
         tooltipText: compactView.effectiveCompactGraphMetric === "network"
-                     ? qsTr("RX solid · TX dashed · dynamically scaled")
-                     : qsTr("Last %1 samples").arg(compactView.historySampleCount)
+                     ? compactView.ttopTr("Receive is solid, transmit is dashed; approximately %1 seconds",
+                                          [compactView.compactGraphSeconds])
+                     : compactView.ttopTr("Approximately %1 seconds",
+                                          [compactView.compactGraphSeconds])
         backgroundColor: PlasmaCore.Theme.backgroundColor
     }
 }

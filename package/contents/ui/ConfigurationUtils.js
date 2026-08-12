@@ -3,6 +3,10 @@
 var DEFAULT_TITLE = "TTop Desk";
 var DEFAULT_BACKGROUND_COLOR = "#20252b";
 
+function languageMode(value) {
+    return ["en", "de", "system"].indexOf(value) !== -1 ? value : "en";
+}
+
 function title(value) {
     if (value === null || value === undefined) return DEFAULT_TITLE;
     var normalized = String(value).replace(/^\s+|\s+$/g, "");

@@ -15,7 +15,6 @@ UMask=0077
 Environment=PYTHONUNBUFFERED=1
 Environment=XDG_RUNTIME_DIR=%t
 NoNewPrivileges=true
-PrivateTmp=true
 RestrictAddressFamilies=AF_UNIX
 
 [Install]

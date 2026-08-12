@@ -6,6 +6,7 @@
 import QtQuick 2.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.plasmoid 2.0
+import "TTop/Runtime"
 import "ConfigurationUtils.js" as Configuration
 
 Item {
@@ -14,6 +15,9 @@ Item {
     // Set to true while developing to log system-monitor sensor discovery.
     property bool debugMetrics: false
     property bool debugBackend: false
+
+    readonly property string languageMode:
+        Configuration.languageMode(Plasmoid.configuration.languageMode)
 
     readonly property string widgetTitle:
         Configuration.title(Plasmoid.configuration.widgetTitle)
@@ -98,6 +102,7 @@ Item {
     MetricsProvider {
         id: metrics
 
+        languageMode: root.languageMode
         debugMetrics: root.debugMetrics
         refreshIntervalMs: root.safeRefreshIntervalMs
         filesystemRefreshIntervalMs: root.safeFilesystemRefreshIntervalMs
@@ -143,6 +148,7 @@ Item {
         id: compactRepresentation
 
         CompactRepresentation {
+            languageMode: root.languageMode
             metricsProvider: metrics
             showCpu: root.showCpu
             showMemory: root.showMemory
@@ -156,6 +162,8 @@ Item {
             showCompactGraphs: root.showCompactGraphs
             compactGraphMetric: root.compactGraphMetric
             historySampleCount: root.safeHistorySampleCount
+            metricRefreshIntervalMs: root.safeRefreshIntervalMs
+            gpuRefreshIntervalMs: root.safeGpuRefreshIntervalMs
             widgetTitle: root.widgetTitle
             formFactor: Plasmoid.formFactor
         }
@@ -165,6 +173,7 @@ Item {
         id: fullRepresentation
 
         FullRepresentation {
+            languageMode: root.languageMode
             metricsProvider: metrics
             backendProvider: backend
             historyProvider: metricHistory

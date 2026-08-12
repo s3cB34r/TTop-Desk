@@ -4,11 +4,21 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
+Milestone 1.15 prepares the widget for release localization and reproducible
+visual QA. All static interface, settings, tooltip, state, and accessibility
+text uses a per-widget Plasma 5 localization adapter backed by KDE translation
+catalogs. English is the default and fallback language, with a complete German
+catalog and an optional system-locale mode. A development-only visual
+harness covers eight bounded full/compact states at 1x, 1.5x, and 2x without
+changing widget configuration, backend behavior, scale settings, or the active
+theme. `scripts/release-check.sh` consolidates safe release validation.
+
 Milestone 1.14 hardens sparklines for accessibility, Plasma theme contrast,
 and HiDPI rendering. Graphs now expose static accessible descriptions and
 tooltips without announcing every sample; network RX is solid while TX is
-dashed so color is not the only distinction. Canvas backing stores follow the
-screen device-pixel ratio while logical layout sizes remain unchanged. An
+dashed so color is not the only distinction. Canvas drawing stays in Qt 5
+logical coordinates so Qt Quick can apply the screen scale without clipping,
+while logical layout sizes remain unchanged. An
 optional single compact-view graph can show CPU, memory, GPU, or network
 history; it is disabled by default and hides when space or its selected metric
 is unavailable. History remains bounded and in-memory only, and no backend or
@@ -88,6 +98,8 @@ For direct development and installation, the system needs:
 - CMake, a C++ compiler, Qt 5 Core/QML/Network development files, and
   `extra-cmake-modules` to build the small Unix-socket QML bridge
 - Plasma 5 development files (commonly `libkf5plasma-dev`)
+- KDE Frameworks 5 localization development files and gettext tools (commonly
+  `libkf5i18n-dev` and `gettext`)
 
 Package names can vary between distributions. This repository does not install
 or modify system packages.
@@ -103,6 +115,13 @@ The settings groups are **General**, **Display**, **Metrics**, **Graphs**,
 `TTop Desk`, is trimmed to 40 characters, and can be edited without changing
 the plugin ID. Header, CPU, RAM, temperature, network, disk I/O, filesystems,
 Top Processes, metric icons, and section labels are enabled by default.
+
+**Language** is a per-widget setting with **English**, **Deutsch**, and
+**System default** choices. English is the deliberate default even on a German
+desktop. The choice applies immediately, persists with that widget instance,
+and does not change the Plasma or operating-system locale. CPU, RAM, GPU, RX,
+TX, VRAM, process names, mount paths, GPU model names, and numeric values remain
+technical data rather than translated content.
 
 CPU, memory, and filesystem progress bars can be hidden independently. Network
 receive/transmit and disk read/write values can also be selected separately.
@@ -196,17 +215,30 @@ The equivalent direct command is:
 plasmoidviewer -a "$(pwd)/package"
 ```
 
-The widget does not start or manage the backend. If it is absent, starting, or
-stopped, only **TOP PROCESSES** changes state; every existing metric continues
-to use Plasma. Unavailable connections retry after five seconds rather than in
-a tight loop.
+Release contributors can run the complete non-destructive check suite with:
 
-### Optional backend user service
+```bash
+./scripts/release-check.sh
+```
+
+Localization updates, screenshot scenarios, baseline review, scale-factor QA,
+and dark/light theme validation are documented in
+[`CONTRIBUTING.md`](CONTRIBUTING.md). Visual captures are opt-in through
+`./scripts/release-check.sh --visual` and never overwrite baselines.
+
+The local install and upgrade helpers install/update and restart the user
+backend service. If it is absent, starting, or stopped, only backend-powered
+GPU and **TOP PROCESSES** change state; every Plasma-native metric continues to
+work. Unavailable connections retry after five seconds rather than in a tight
+loop.
+
+### Backend user service
 
 The development installer generates a user unit containing the resolved
 repository and Python paths. It writes only
 `~/.config/systemd/user/ttop-desk-backend.service`, requires no `sudo`, and
-starts the backend only for the current user:
+enables and starts the backend only for the current user. Running it again
+safely updates the absolute repository/Python paths and restarts the service:
 
 ```bash
 ./scripts/install-backend-service.sh
@@ -226,7 +258,10 @@ journalctl --user -u ttop-desk-backend -f
 The service uses the same mode-`0600` Unix socket, opens no TCP port, runs
 without `User=` or elevated privileges, restarts after unexpected failure with
 a two-second delay, and shuts down cleanly on SIGTERM. Plasma-native metrics do
-not depend on the unit.
+not depend on the unit. The unit deliberately avoids `PrivateTmp`: on enforced
+Plasma AppArmor profiles, placing the socket server in a separate mount
+namespace makes the otherwise user-owned runtime socket appear as a
+"disconnected path" and prevents `plasmashell` from connecting.
 
 ### Metric discovery debugging
 

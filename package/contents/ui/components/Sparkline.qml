@@ -6,10 +6,12 @@
 import QtQuick 2.15
 import QtQuick.Window 2.15
 import org.kde.plasma.core 2.0 as PlasmaCore
+import "../TTop/Runtime"
 
 Item {
     id: sparkline
 
+    property string languageMode: "en"
     property var values: []
     property var secondaryValues: []
     property bool showPrimary: true
@@ -19,7 +21,7 @@ Item {
     property real maximumValue: 100
     property real dynamicMinimumMaximum: 1
     property bool secondaryDashed: true
-    property string accessibleName: qsTr("Metric history graph")
+    property string accessibleName: ttopTr("Metric history graph")
     property string accessibleDescription: ""
     property string tooltipText: ""
     property color backgroundColor: PlasmaCore.Theme.backgroundColor
@@ -31,6 +33,10 @@ Item {
     readonly property color effectiveSecondaryLineColor:
         withAlpha(contrastColor(secondaryLineColor, backgroundColor), 0.72)
     readonly property size backingStoreSize: canvas.canvasSize
+
+    function ttopTr(source, values) {
+        return ttopTranslations.text(languageMode, source, values || []);
+    }
 
     implicitHeight: 24
     Accessible.role: Accessible.Graphic
@@ -90,16 +96,19 @@ Item {
         objectName: "sparklineCanvas"
         anchors.fill: parent
         renderTarget: Canvas.Image
-        canvasSize: Qt.size(Math.max(1, Math.ceil(width * sparkline.devicePixelRatio)),
-                            Math.max(1, Math.ceil(height * sparkline.devicePixelRatio)))
+        // Canvas coordinates are logical in Qt 5. Qt Quick applies the window
+        // device scale when compositing the Canvas texture.
+        canvasSize: Qt.size(Math.max(1, Math.ceil(width)),
+                            Math.max(1, Math.ceil(height)))
 
-        function drawSeries(context, series, color, lower, upper, dashed) {
-            if (series.length === 0 || width <= 0 || height <= 0) return;
+        function drawSeries(context, series, color, lower, upper, dashed,
+                            drawingWidth, drawingHeight) {
+            if (series.length === 0 || drawingWidth <= 0 || drawingHeight <= 0) return;
             var range = Math.max(0.000001, upper - lower);
             var lineWidth = 1.25;
-            var inset = Math.max(lineWidth / 2, 1 / sparkline.devicePixelRatio);
-            var usableWidth = Math.max(1, width - inset * 2);
-            var usableHeight = Math.max(1, height - inset * 2);
+            var inset = Math.max(lineWidth / 2, 1);
+            var usableWidth = Math.max(1, drawingWidth - inset * 2);
+            var usableHeight = Math.max(1, drawingHeight - inset * 2);
             context.strokeStyle = color;
             context.fillStyle = color;
             context.lineWidth = lineWidth;
@@ -111,7 +120,8 @@ Item {
                               * (1 - Math.max(0, Math.min(1,
                                   (series[0] - lower) / range)));
                 context.beginPath();
-                context.arc(width - inset - lineWidth, singleY, lineWidth, 0, Math.PI * 2);
+                context.arc(drawingWidth - inset - lineWidth, singleY,
+                            lineWidth, 0, Math.PI * 2);
                 context.fill();
                 context.setLineDash([]);
                 return;
@@ -133,7 +143,6 @@ Item {
             var context = getContext("2d");
             context.reset();
             context.clearRect(0, 0, canvasSize.width, canvasSize.height);
-            context.scale(sparkline.devicePixelRatio, sparkline.devicePixelRatio);
             var primary = sparkline.showPrimary
                           ? sparkline.validValues(sparkline.values) : [];
             var secondary = sparkline.showSecondary
@@ -154,9 +163,10 @@ Item {
             if (!isFinite(lower)) lower = 0;
             if (!isFinite(upper) || upper <= lower) upper = lower + 1;
             drawSeries(context, primary, sparkline.effectiveLineColor,
-                       lower, upper, false);
+                       lower, upper, false, canvasSize.width, canvasSize.height);
             drawSeries(context, secondary, sparkline.effectiveSecondaryLineColor,
-                       lower, upper, sparkline.secondaryDashed);
+                       lower, upper, sparkline.secondaryDashed,
+                       canvasSize.width, canvasSize.height);
         }
 
         onWidthChanged: requestPaint()

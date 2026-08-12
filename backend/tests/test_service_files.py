@@ -19,6 +19,7 @@ class ServiceFileTests(unittest.TestCase):
         self.assertIn("RestartSec=2", unit)
         self.assertIn("StartLimitBurst=5", unit)
         self.assertIn("RestrictAddressFamilies=AF_UNIX", unit)
+        self.assertNotIn("PrivateTmp=true", unit)
         self.assertNotRegex(unit, r"(?m)^User=")
         self.assertNotIn("/data/Projects/TTop-Desk", unit)
         self.assertNotIn("AF_INET", unit)
@@ -35,6 +36,16 @@ class ServiceFileTests(unittest.TestCase):
                 self.assertNotIn("sudo", script)
                 for match in re.finditer(r"systemctl\s+([^\n]+)", script):
                     self.assertIn("--user", match.group(1))
+
+    def test_installer_updates_and_restarts_service_idempotently(self) -> None:
+        script = (
+            REPOSITORY_ROOT / "scripts/install-backend-service.sh"
+        ).read_text(encoding="utf-8")
+        self.assertIn('systemctl --user daemon-reload', script)
+        self.assertIn('systemctl --user enable "${UNIT_NAME}"', script)
+        self.assertIn('systemctl --user restart "${UNIT_NAME}"', script)
+        self.assertIn('systemctl --user is-enabled --quiet "${UNIT_NAME}"', script)
+        self.assertIn('systemctl --user is-active --quiet "${UNIT_NAME}"', script)
 
     def test_uninstaller_targets_only_managed_unit(self) -> None:
         script = (

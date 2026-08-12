@@ -7,10 +7,12 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.components 2.0 as PlasmaComponents
+import "../TTop/Runtime"
 
 ColumnLayout {
     id: row
 
+    property string languageMode: "en"
     property string metricLabel: ""
     property string iconName: ""
     property bool showIcon: true
@@ -18,7 +20,7 @@ ColumnLayout {
     property bool showProgressBar: true
     property bool showGraph: false
     property var graphValues: []
-    property string graphAccessibleName: qsTr("Metric history")
+    property string graphAccessibleName: ttopTr("Metric history")
     property string graphDescription: ""
     property string graphTooltip: ""
     property color graphBackgroundColor: PlasmaCore.Theme.backgroundColor
@@ -27,17 +29,22 @@ ColumnLayout {
     // Supported states: "loading", "available", and "unavailable".
     property string availabilityState: "loading"
 
+    function ttopTr(source, values) {
+        return ttopTranslations.text(languageMode, source, values || []);
+    }
+
     readonly property bool available: availabilityState === "available"
     readonly property string displayedValue: available
                                                ? valueText
                                                : availabilityState === "unavailable"
-                                                 ? "Unavailable"
-                                                 : "Detecting…"
+                                                 ? row.ttopTr("Unavailable")
+                                                 : row.ttopTr("Detecting…")
 
     spacing: 0
 
     RowLayout {
         Layout.fillWidth: true
+        Layout.minimumWidth: 0
         spacing: PlasmaCore.Units.smallSpacing
 
         PlasmaCore.IconItem {
@@ -50,6 +57,7 @@ ColumnLayout {
         PlasmaComponents.Label {
             visible: row.showLabel
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             text: row.metricLabel
             color: PlasmaCore.Theme.textColor
             font.bold: true
@@ -57,6 +65,7 @@ ColumnLayout {
 
         PlasmaComponents.Label {
             Layout.alignment: Qt.AlignRight
+            Layout.minimumWidth: 0
             Layout.maximumWidth: row.width * 0.78
             text: row.displayedValue
             color: row.available ? PlasmaCore.Theme.highlightColor
@@ -81,6 +90,7 @@ ColumnLayout {
     }
 
     Sparkline {
+        languageMode: row.languageMode
         objectName: "metricSparkline"
         visible: row.showGraph && row.available
         Layout.fillWidth: true

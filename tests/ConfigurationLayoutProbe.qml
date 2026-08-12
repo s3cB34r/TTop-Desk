@@ -4,6 +4,7 @@
  */
 
 import QtQuick 2.15
+import QtQuick.Layouts 1.15
 import "../package/contents/ui" as Ui
 
 Item {
@@ -13,13 +14,15 @@ Item {
 
     property var cases: [
         "all", "systemTitle", "longTitle", "onlyCpu", "onlyProcesses", "cpuRam",
-        "headerOnly", "headerDisabled", "noProcesses", "noFilesystems",
+        "headerOnly", "headerDisabled", "noCpu", "noMemory",
+        "noTemperature", "noNetwork", "noDiskIo", "noProcesses", "noFilesystems",
         "iconsDisabled", "progressDisabled", "processNameOnly",
         "subElements", "labelsDisabled", "dense", "gpuDisabled", "onlyGpu",
         "gpuUtilizationOnly", "gpuMemoryOnly", "gpuTemperatureOnly", "gpuNoBars",
         "processesGpu", "filesystemsGpu", "allHidden", "appearance",
         "graphsDisabled", "cpuGraphOnly", "networkGraphOnly",
-        "history30", "history60", "history120"
+        "history30", "history60", "history120", "languageEnglish",
+        "languageGerman", "allRestored"
     ]
     property int caseIndex: 0
     property real allHeight: 0
@@ -48,9 +51,24 @@ Item {
         return count;
     }
 
+    function visibleTextExists(item, expected) {
+        if (item.visible && typeof item.text !== "undefined" && item.text === expected) {
+            return true;
+        }
+        for (var index = 0; index < item.children.length; ++index) {
+            if (visibleTextExists(item.children[index], expected)) return true;
+        }
+        return false;
+    }
+
     function bottomInsideCard(item) {
         var bottom = item.mapToItem(card, 0, item.height);
         return bottom.y <= card.height - card.contentMargin + 0.5;
+    }
+
+    function rightInsideCard(item) {
+        var right = item.mapToItem(card, item.width, 0);
+        return right.x <= card.width - card.contentMargin + 0.5;
     }
 
     function setSections(value) {
@@ -66,6 +84,7 @@ Item {
 
     function resetPresentation() {
         card.showHeader = true;
+        card.languageMode = "en";
         setSections(true);
         card.showMetricIcons = true;
         card.showSectionLabels = true;
@@ -106,11 +125,21 @@ Item {
         } else if (name === "onlyProcesses") {
             setSections(false); card.showHeader = false; card.showProcesses = true;
         } else if (name === "cpuRam") {
-            setSections(false); card.showHeader = false; card.showCpu = true; card.showMemory = true;
+            setSections(false); card.showCpu = true; card.showMemory = true;
         } else if (name === "headerOnly") {
             setSections(false);
         } else if (name === "headerDisabled") {
             card.showHeader = false;
+        } else if (name === "noCpu") {
+            card.showCpu = false;
+        } else if (name === "noMemory") {
+            card.showMemory = false;
+        } else if (name === "noTemperature") {
+            card.showTemperature = false;
+        } else if (name === "noNetwork") {
+            card.showNetwork = false;
+        } else if (name === "noDiskIo") {
+            card.showDiskIo = false;
         } else if (name === "noProcesses") {
             card.showProcesses = false;
         } else if (name === "noFilesystems") {
@@ -181,6 +210,8 @@ Item {
             card.historySampleCount = 60;
         } else if (name === "history120") {
             card.historySampleCount = 120;
+        } else if (name === "languageGerman") {
+            card.languageMode = "de";
         }
     }
 
@@ -191,9 +222,11 @@ Item {
         var processes = findByObjectName(card, "processSection");
         var gpu = findByObjectName(card, "gpuSection");
         var header = findByObjectName(card, "headerSection");
-        if (name === "all") {
-            allHeight = card.implicitHeight;
-            allWidth = card.implicitWidth;
+        if (name === "all" || name === "allRestored") {
+            if (name === "all") {
+                allHeight = card.implicitHeight;
+                allWidth = card.implicitWidth;
+            }
             if (!cpu.visible || !memory.visible || !filesystem.visible
                     || !processes.visible || !gpu.visible) {
                 fail("default sections are not all visible");
@@ -204,6 +237,10 @@ Item {
             }
             if (findByObjectName(card, "gpuName").width > gpu.width) {
                 fail("long GPU name exceeded section width");
+            }
+            if (name === "allRestored"
+                    && Math.abs(card.implicitHeight - allHeight) > 0.5) {
+                fail("re-enabled sections did not restore the full card height");
             }
         } else if (name === "systemTitle") {
             if (findByObjectName(card, "widgetTitleLabel").text !== "System Monitor") {
@@ -235,6 +272,25 @@ Item {
                 fail("hidden header left content behind");
             }
             if (card.implicitHeight >= allHeight) fail("hidden header retained layout height");
+        } else if (name === "noCpu") {
+            if (cpu.visible || card.implicitHeight >= allHeight) fail("CPU section retained height");
+        } else if (name === "noMemory") {
+            if (memory.visible || card.implicitHeight >= allHeight) fail("memory section retained height");
+        } else if (name === "noTemperature") {
+            var temperature = findByObjectName(card, "temperatureSection");
+            if (temperature.visible || card.implicitHeight >= allHeight) {
+                fail("temperature section retained height");
+            }
+        } else if (name === "noNetwork") {
+            var networkHidden = findByObjectName(card, "networkSection");
+            if (networkHidden.visible || card.implicitHeight >= allHeight) {
+                fail("network section retained height");
+            }
+        } else if (name === "noDiskIo") {
+            var diskIo = findByObjectName(card, "diskIoSection");
+            if (diskIo.visible || card.implicitHeight >= allHeight) {
+                fail("disk I/O section retained height");
+            }
         } else if (name === "noProcesses") {
             if (processes.visible || card.implicitHeight >= allHeight) fail("process section retained height");
         } else if (name === "noFilesystems") {
@@ -329,6 +385,43 @@ Item {
             if (card.historySampleCount !== expectedHistory) {
                 fail("history length did not update live");
             }
+        } else if (name === "languageEnglish") {
+            if (!visibleTextExists(card, "TEMPERATURE")
+                    || !visibleTextExists(card, "NETWORK")) {
+                fail("English labels were not selected");
+            }
+        } else if (name === "languageGerman") {
+            if (!visibleTextExists(card, "TEMPERATUR")
+                    || !visibleTextExists(card, "NETZWERK")) {
+                fail("German labels were not selected");
+            }
+            if (card.implicitWidth !== allWidth) {
+                fail("German labels changed the stable card width");
+            }
+        }
+        var boundedSections = [cpu, memory, filesystem, processes, gpu,
+                               findByObjectName(card, "temperatureSection"),
+                               findByObjectName(card, "networkSection"),
+                               findByObjectName(card, "diskIoSection")];
+        for (var sectionIndex = 0; sectionIndex < boundedSections.length;
+             ++sectionIndex) {
+            if (boundedSections[sectionIndex].visible) {
+                if (!rightInsideCard(boundedSections[sectionIndex])) {
+                    fail("visible section exceeded the card's right content bound");
+                }
+                if (!bottomInsideCard(boundedSections[sectionIndex])) {
+                    fail("visible section exceeded the card's bottom content bound");
+                }
+            }
+        }
+        var content = findByObjectName(card, "fullContent");
+        var expectedHeight = content.implicitHeight + card.contentMargin * 2;
+        if (Math.abs(card.implicitHeight - expectedHeight) > 0.5) {
+            fail("card height is not derived from the content implicit height");
+        }
+        if (Math.abs(card.Layout.minimumHeight - expectedHeight) > 0.5
+                || Math.abs(card.Layout.preferredHeight - expectedHeight) > 0.5) {
+            fail("outer layout height hints do not track the content height");
         }
         if (card.implicitWidth !== allWidth) fail("configuration changed stable card width");
     }

@@ -6,6 +6,9 @@
   <kcfgfile name=""/>
 
   <group name="General">
+    <entry name="languageMode" type="String">
+      <default>en</default>
+    </entry>
     <entry name="widgetTitle" type="String">
       <default>TTop Desk</default>
     </entry>

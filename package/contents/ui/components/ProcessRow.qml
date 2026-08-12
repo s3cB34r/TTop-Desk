@@ -7,16 +7,24 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.components 2.0 as PlasmaComponents
+import "../TTop/Runtime"
 
 RowLayout {
     id: row
 
+    Layout.minimumWidth: 0
+
+    property string languageMode: "en"
     property int processPid: 0
     property string processName: ""
     property real cpuPercent: NaN
     property real memoryBytes: NaN
     property bool showCpu: true
     property bool showMemory: true
+
+    function ttopTr(source, values) {
+        return ttopTranslations.text(languageMode, source, values || []);
+    }
 
     spacing: PlasmaCore.Units.smallSpacing
 
@@ -34,7 +42,7 @@ RowLayout {
         text: row.processName
         color: PlasmaCore.Theme.textColor
         elide: Text.ElideRight
-        Accessible.name: qsTr("Process %1").arg(row.processName)
+        Accessible.name: row.ttopTr("Process %1", [row.processName])
     }
 
     PlasmaComponents.Label {

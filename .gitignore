@@ -21,6 +21,7 @@ __pycache__/
 
 # Locally built QML bridge
 package/contents/ui/TTop/Backend/libttopbackendplugin.so
+package/contents/ui/TTop/Runtime/libttopruntimeplugin.so
 
 # Temporary files
 *.log

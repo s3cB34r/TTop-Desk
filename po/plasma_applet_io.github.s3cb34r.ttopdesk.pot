@@ -1,0 +1,600 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR TTop Desk contributors
+# This file is distributed under the same license as the TTop Desk package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: TTop Desk 0.1.15\n"
+"Report-Msgid-Bugs-To: https://github.com/s3cb34r/TTop-Desk/issues\n"
+"POT-Creation-Date: 2026-08-12 13:21+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: package/contents/config/config.qml:23
+msgid "TTop Desk settings"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:76
+msgid "CPU history"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:77
+msgid "Memory usage history"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:78
+#: package/contents/ui/components/GpuSection.qml:27
+msgid "GPU utilization history"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:79
+#: package/contents/ui/components/NetworkRow.qml:27
+msgid "Network receive and transmit history"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:87
+#: package/contents/ui/FullRepresentation.qml:178
+msgid "CPU history, approximately %1 seconds"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:89
+#: package/contents/ui/FullRepresentation.qml:204
+msgid "Memory usage history, approximately %1 seconds"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:91
+#: package/contents/ui/FullRepresentation.qml:244
+msgid "GPU utilization history, approximately %1 seconds"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:92
+#: package/contents/ui/FullRepresentation.qml:268
+msgid "Network receive and transmit history, approximately %1 seconds"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:127
+#: package/contents/ui/ConfigGeneral.qml:258
+#: package/contents/ui/ConfigGeneral.qml:282
+msgid "CPU usage"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:131
+#: package/contents/ui/CompactRepresentation.qml:174
+#: package/contents/ui/CompactRepresentation.qml:219
+#: package/contents/ui/CompactRepresentation.qml:257
+#: package/contents/ui/FullRepresentation.qml:309
+#: package/contents/ui/MetricsProvider.qml:326
+#: package/contents/ui/MetricsProvider.qml:339
+#: package/contents/ui/MetricsProvider.qml:354
+#: package/contents/ui/components/DiskIoRow.qml:32
+#: package/contents/ui/components/FilesystemRow.qml:52
+#: package/contents/ui/components/GpuSection.qml:94
+#: package/contents/ui/components/GpuSection.qml:148
+#: package/contents/ui/components/GpuSection.qml:188
+#: package/contents/ui/components/MetricRow.qml:40
+#: package/contents/ui/components/NetworkRow.qml:40
+#: package/contents/ui/components/TemperatureRow.qml:32
+msgid "Unavailable"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:131
+#: package/contents/ui/CompactRepresentation.qml:174
+#: package/contents/ui/CompactRepresentation.qml:219
+#: package/contents/ui/CompactRepresentation.qml:257
+#: package/contents/ui/CompactRepresentation.qml:304
+#: package/contents/ui/FullRepresentation.qml:309
+#: package/contents/ui/components/DiskIoRow.qml:34
+#: package/contents/ui/components/GpuSection.qml:47
+#: package/contents/ui/components/MetricRow.qml:41
+#: package/contents/ui/components/NetworkRow.qml:42
+#: package/contents/ui/components/ProcessList.qml:31
+#: package/contents/ui/components/TemperatureRow.qml:33
+msgid "Detecting…"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:145
+#: package/contents/ui/FullRepresentation.qml:170
+msgid "CPU"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:170
+#: package/contents/ui/ConfigGeneral.qml:259
+msgid "Memory usage"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:188
+#: package/contents/ui/FullRepresentation.qml:196
+msgid "RAM"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:213
+msgid "Network throughput"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:215
+msgid ""
+"Receive: %1\n"
+"Transmit: %2"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:253
+msgid "CPU temperature"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:271
+msgid "TEMP"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:297
+#: package/contents/ui/ConfigGeneral.qml:260
+msgid "GPU utilization"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:302
+#: package/contents/ui/components/GpuSection.qml:42
+#: package/contents/ui/components/GpuSection.qml:45
+#: package/contents/ui/components/ProcessList.qml:32
+msgid "Backend unavailable"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:304
+#: package/contents/ui/components/GpuSection.qml:48
+msgid "GPU unavailable"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:318
+#: package/contents/ui/ConfigGeneral.qml:156
+#: package/contents/ui/components/GpuSection.qml:55
+msgid "GPU"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:381
+msgid ""
+"Receive is solid and transmit is dashed; numeric values remain authoritative"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:382
+msgid "Supplementary history graph; numeric values remain authoritative"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:384
+msgid "Receive is solid, transmit is dashed; approximately %1 seconds"
+msgstr ""
+
+#: package/contents/ui/CompactRepresentation.qml:386
+msgid "Approximately %1 seconds"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:80
+msgid "General"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:85
+msgid "Language:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:90
+msgid "English"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:91
+msgid "Deutsch"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:92
+msgid "System default"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:101
+msgid "Widget title:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:106
+msgid "Visible widget title"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:111
+msgid "Show widget header"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:117
+msgid "Display"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:120
+msgid "Show metric icons"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:121
+msgid "Show section labels"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:122
+msgid "Use compact section spacing"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:123
+msgid "Use dense row spacing"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:126
+msgid "Show network and temperature details in compact view"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:132
+msgid "Metrics"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:135
+msgid "Show CPU"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:136
+msgid "Show CPU progress bar"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:137
+msgid "Show memory"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:138
+msgid "Show memory progress bar"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:139
+msgid "Show temperature"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:140
+msgid "Show network"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:141
+msgid "Show network receive rate"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:142
+msgid "Show network transmit rate"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:143
+msgid "Show disk I/O"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:144
+msgid "Show disk read rate"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:145
+msgid "Show disk write rate"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:146
+msgid "Show filesystems"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:149
+msgid "Show filesystem progress bars"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:159
+msgid "Show GPU"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:162
+msgid "Show GPU utilization"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:167
+msgid "Show GPU memory"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:172
+msgid "Show GPU temperature"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:177
+msgid "Show GPU progress bars"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:182
+msgid "GPU update:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:188
+#: package/contents/ui/ConfigGeneral.qml:345
+msgid "500 ms"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:189
+#: package/contents/ui/ConfigGeneral.qml:324
+#: package/contents/ui/ConfigGeneral.qml:346
+msgid "1 second"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:190
+#: package/contents/ui/ConfigGeneral.qml:325
+#: package/contents/ui/ConfigGeneral.qml:347
+msgid "2 seconds"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:191
+#: package/contents/ui/ConfigGeneral.qml:326
+#: package/contents/ui/ConfigGeneral.qml:348
+#: package/contents/ui/ConfigGeneral.qml:361
+msgid "5 seconds"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:201
+msgid "Graphs"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:204
+msgid "Show graphs"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:207
+msgid "Show CPU graph"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:212
+msgid "Show memory graph"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:217
+msgid "Show GPU graph"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:222
+msgid "Show network graph"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:227
+msgid "History length:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:232
+msgid "30 samples"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:233
+msgid "60 samples"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:234
+msgid "120 samples"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:244
+msgid "Compact"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:249
+msgid "Show graphs in compact view"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:253
+msgid "Compact graph metric:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:261
+msgid "Network RX/TX"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:271
+msgid "Processes"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:274
+msgid "Show Top Processes"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:277
+msgid "Process sorting:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:283
+msgid "Resident memory"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:291
+msgid "Process rows:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:307
+msgid "Show process CPU column"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:313
+msgid "Show process memory column"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:318
+msgid "Process update:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:336
+msgid "Refresh"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:340
+msgid "Live metrics:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:356
+msgid "Filesystems:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:362
+msgid "10 seconds"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:363
+msgid "15 seconds"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:364
+msgid "30 seconds"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:365
+msgid "60 seconds"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:373
+msgid "Filesystem rows:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:391
+msgid "Appearance"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:396
+msgid "Use Plasma theme background"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:400
+msgid "Background opacity:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:415
+msgid "Custom background:"
+msgstr ""
+
+#: package/contents/ui/ConfigGeneral.qml:422
+msgid "Custom background color in hexadecimal notation"
+msgstr ""
+
+#: package/contents/ui/FullRepresentation.qml:180
+msgid ""
+"Supplementary CPU usage history; current numeric value remains authoritative"
+msgstr ""
+
+#: package/contents/ui/FullRepresentation.qml:181
+msgid "CPU history · approximately %1 seconds"
+msgstr ""
+
+#: package/contents/ui/FullRepresentation.qml:206
+msgid ""
+"Supplementary memory usage history; current numeric value remains "
+"authoritative"
+msgstr ""
+
+#: package/contents/ui/FullRepresentation.qml:207
+msgid "Memory history · approximately %1 seconds"
+msgstr ""
+
+#: package/contents/ui/FullRepresentation.qml:246
+msgid ""
+"Supplementary GPU utilization history; current numeric value remains "
+"authoritative"
+msgstr ""
+
+#: package/contents/ui/FullRepresentation.qml:247
+msgid "GPU utilization history · approximately %1 seconds"
+msgstr ""
+
+#: package/contents/ui/FullRepresentation.qml:270
+msgid ""
+"Receive is a solid line and transmit is a dashed line; current numeric "
+"values remain authoritative"
+msgstr ""
+
+#: package/contents/ui/FullRepresentation.qml:271
+msgid "Network RX solid · TX dashed · dynamically scaled"
+msgstr ""
+
+#: package/contents/ui/FullRepresentation.qml:302
+msgid "FILESYSTEMS"
+msgstr ""
+
+#: package/contents/ui/MetricsProvider.qml:62
+msgid "%1 · size unavailable"
+msgstr ""
+
+#: package/contents/ui/components/DiskIoRow.qml:40
+msgid "DISK I/O"
+msgstr ""
+
+#: package/contents/ui/components/DiskIoRow.qml:57
+msgid "↓ READ  %1"
+msgstr ""
+
+#: package/contents/ui/components/DiskIoRow.qml:67
+msgid "↑ WRITE  %1"
+msgstr ""
+
+#: package/contents/ui/components/GpuSection.qml:49
+msgid "GPU error"
+msgstr ""
+
+#: package/contents/ui/components/GpuSection.qml:71
+msgid "GPU model %1"
+msgstr ""
+
+#: package/contents/ui/components/GpuSection.qml:84
+msgid "UTILIZATION"
+msgstr ""
+
+#: package/contents/ui/components/GpuSection.qml:138
+msgid "VRAM"
+msgstr ""
+
+#: package/contents/ui/components/GpuSection.qml:179
+msgid "GPU TEMP"
+msgstr ""
+
+#: package/contents/ui/components/MetricRow.qml:23
+msgid "Metric history"
+msgstr ""
+
+#: package/contents/ui/components/NetworkRow.qml:28
+msgid "Receive is solid; transmit is dashed"
+msgstr ""
+
+#: package/contents/ui/components/NetworkRow.qml:29
+msgid "RX solid · TX dashed · dynamically scaled"
+msgstr ""
+
+#: package/contents/ui/components/NetworkRow.qml:48
+msgid "NETWORK"
+msgstr ""
+
+#: package/contents/ui/components/NetworkRow.qml:65
+msgid "↓ RX  %1"
+msgstr ""
+
+#: package/contents/ui/components/NetworkRow.qml:75
+msgid "↑ TX  %1"
+msgstr ""
+
+#: package/contents/ui/components/ProcessList.qml:33
+msgid "Backend error"
+msgstr ""
+
+#: package/contents/ui/components/ProcessList.qml:34
+msgid "No process data"
+msgstr ""
+
+#: package/contents/ui/components/ProcessList.qml:39
+msgid "TOP PROCESSES"
+msgstr ""
+
+#: package/contents/ui/components/ProcessRow.qml:45
+msgid "Process %1"
+msgstr ""
+
+#: package/contents/ui/components/Sparkline.qml:24
+msgid "Metric history graph"
+msgstr ""
+
+#: package/contents/ui/components/TemperatureRow.qml:48
+msgid "TEMPERATURE"
+msgstr ""

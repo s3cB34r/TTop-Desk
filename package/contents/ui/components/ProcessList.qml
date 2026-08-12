@@ -6,10 +6,14 @@
 import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
+import "../TTop/Runtime"
 
 ColumnLayout {
     id: processList
 
+    Layout.minimumWidth: 0
+
+    property string languageMode: "en"
     property var backendProvider
     property bool showIcon: true
     property bool showLabel: true
@@ -19,16 +23,20 @@ ColumnLayout {
 
     spacing: denseMode ? 0 : PlasmaCore.Units.smallSpacing
 
+    function ttopTr(source, values) {
+        return ttopTranslations.text(languageMode, source, values || []);
+    }
+
     function statusText() {
-        if (backendProvider.backendState === "detecting") return qsTr("Detecting…");
-        if (backendProvider.backendState === "unavailable") return qsTr("Backend unavailable");
-        if (backendProvider.backendState === "error") return qsTr("Backend error");
-        return backendProvider.processCount === 0 ? qsTr("No process data") : "";
+        if (backendProvider.backendState === "detecting") return ttopTr("Detecting…");
+        if (backendProvider.backendState === "unavailable") return ttopTr("Backend unavailable");
+        if (backendProvider.backendState === "error") return ttopTr("Backend error");
+        return backendProvider.processCount === 0 ? ttopTr("No process data") : "";
     }
 
     SectionHeader {
         Layout.fillWidth: true
-        title: qsTr("TOP PROCESSES")
+        title: processList.ttopTr("TOP PROCESSES")
         iconName: "view-process-all"
         showIcon: processList.showIcon
         showLabel: processList.showLabel
@@ -39,6 +47,7 @@ ColumnLayout {
         model: processList.backendProvider.processEntries
 
         delegate: ProcessRow {
+            languageMode: processList.languageMode
             Layout.fillWidth: true
             processPid: modelData.pid
             processName: modelData.name

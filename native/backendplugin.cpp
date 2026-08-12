@@ -4,6 +4,7 @@
  */
 
 #include "localsocketclient.h"
+#include "translationhelper.h"
 
 #include <QQmlContext>
 #include <QQmlEngine>
@@ -25,6 +26,8 @@ public:
         Q_UNUSED(uri)
         auto *client = new LocalSocketClient(engine);
         engine->rootContext()->setContextProperty(QStringLiteral("ttopBackendSocketBridge"), client);
+        auto *translations = new TranslationHelper(engine);
+        engine->rootContext()->setContextProperty(QStringLiteral("ttopTranslations"), translations);
     }
 };
 

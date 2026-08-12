@@ -7,12 +7,14 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.components 2.0 as PlasmaComponents
+import "TTop/Runtime"
 import "components" as Components
 
 Rectangle {
     id: fullView
     objectName: "fullRepresentation"
 
+    property string languageMode: "en"
     property var metricsProvider
     property var backendProvider
     property var historyProvider: null
@@ -66,19 +68,21 @@ Rectangle {
                                                  ? PlasmaCore.Theme.backgroundColor
                                                  : customBackgroundColor
 
-    function approximateHistoryText(intervalMs) {
-        var seconds = Math.max(1, Math.round(historySampleCount * intervalMs / 1000));
-        return qsTr("approximately %1 seconds").arg(seconds);
+    function ttopTr(source, values) {
+        return ttopTranslations.text(languageMode, source, values || []);
+    }
+
+    function historySeconds(intervalMs) {
+        return Math.max(1, Math.round(historySampleCount * intervalMs / 1000));
     }
 
     implicitWidth: preferredCardWidth
-    implicitHeight: content.implicitHeight + contentMargin * 2
+    implicitHeight: contentMargin * 2
 
     Layout.minimumWidth: minimumCardWidth
     Layout.preferredWidth: implicitWidth
-    Layout.minimumHeight: implicitHeight
-    Layout.preferredHeight: implicitHeight
-
+    Layout.minimumHeight: contentMargin * 2
+    Layout.preferredHeight: contentMargin * 2
     color: Qt.rgba(baseBackgroundColor.r, baseBackgroundColor.g,
                    baseBackgroundColor.b, Math.max(0.35, Math.min(1, backgroundOpacity)))
     radius: PlasmaCore.Units.smallSpacing
@@ -86,6 +90,30 @@ Rectangle {
                           PlasmaCore.Theme.highlightColor.g,
                           PlasmaCore.Theme.highlightColor.b, 0.35)
     border.width: 1
+
+    function synchronizeImplicitHeight() {
+        var nextHeight = Math.ceil(content.implicitHeight) + contentMargin * 2;
+        if (Math.abs(implicitHeight - nextHeight) > 0.5) {
+            implicitHeight = nextHeight;
+        }
+        if (Math.abs(Layout.minimumHeight - nextHeight) > 0.5) {
+            Layout.minimumHeight = nextHeight;
+        }
+        if (Math.abs(Layout.preferredHeight - nextHeight) > 0.5) {
+            Layout.preferredHeight = nextHeight;
+        }
+    }
+
+    onContentMarginChanged: Qt.callLater(synchronizeImplicitHeight)
+    Component.onCompleted: Qt.callLater(synchronizeImplicitHeight)
+
+    Connections {
+        target: content
+
+        function onImplicitHeightChanged() {
+            Qt.callLater(fullView.synchronizeImplicitHeight);
+        }
+    }
 
     ColumnLayout {
         id: content
@@ -101,6 +129,7 @@ Rectangle {
             objectName: "headerSection"
             visible: fullView.showHeader
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: PlasmaCore.Units.smallSpacing
 
             PlasmaCore.IconItem {
@@ -134,9 +163,11 @@ Rectangle {
 
         Components.MetricRow {
             objectName: "cpuSection"
+            languageMode: fullView.languageMode
             visible: fullView.showCpu
             Layout.fillWidth: true
-            metricLabel: qsTr("CPU")
+            Layout.minimumWidth: 0
+            metricLabel: fullView.ttopTr("CPU")
             iconName: "cpu"
             showIcon: fullView.showMetricIcons
             showLabel: fullView.showSectionLabels
@@ -144,11 +175,11 @@ Rectangle {
             showGraph: fullView.showGraphs && fullView.showCpuGraph
             graphValues: fullView.historyProvider !== null
                          ? fullView.historyProvider.cpuValues : []
-            graphAccessibleName: qsTr("CPU history, last %1 samples")
-                                 .arg(fullView.historySampleCount)
-            graphDescription: qsTr("Supplementary CPU usage history; current numeric value remains authoritative")
-            graphTooltip: qsTr("CPU history · %1")
-                          .arg(fullView.approximateHistoryText(fullView.metricRefreshIntervalMs))
+            graphAccessibleName: fullView.ttopTr("CPU history, approximately %1 seconds",
+                                                 [fullView.historySeconds(fullView.metricRefreshIntervalMs)])
+            graphDescription: fullView.ttopTr("Supplementary CPU usage history; current numeric value remains authoritative")
+            graphTooltip: fullView.ttopTr("CPU history · approximately %1 seconds",
+                                          [fullView.historySeconds(fullView.metricRefreshIntervalMs)])
             graphBackgroundColor: fullView.baseBackgroundColor
             valueText: fullView.metricsProvider.cpuAvailable
                        ? fullView.metricsProvider.cpuPercent.toFixed(1) + "%" : ""
@@ -158,9 +189,11 @@ Rectangle {
 
         Components.MetricRow {
             objectName: "memorySection"
+            languageMode: fullView.languageMode
             visible: fullView.showMemory
             Layout.fillWidth: true
-            metricLabel: qsTr("RAM")
+            Layout.minimumWidth: 0
+            metricLabel: fullView.ttopTr("RAM")
             iconName: "memory"
             showIcon: fullView.showMetricIcons
             showLabel: fullView.showSectionLabels
@@ -168,11 +201,11 @@ Rectangle {
             showGraph: fullView.showGraphs && fullView.showMemoryGraph
             graphValues: fullView.historyProvider !== null
                          ? fullView.historyProvider.memoryValues : []
-            graphAccessibleName: qsTr("Memory usage history, last %1 samples")
-                                 .arg(fullView.historySampleCount)
-            graphDescription: qsTr("Supplementary memory usage history; current numeric value remains authoritative")
-            graphTooltip: qsTr("Memory history · %1")
-                          .arg(fullView.approximateHistoryText(fullView.metricRefreshIntervalMs))
+            graphAccessibleName: fullView.ttopTr("Memory usage history, approximately %1 seconds",
+                                                 [fullView.historySeconds(fullView.metricRefreshIntervalMs)])
+            graphDescription: fullView.ttopTr("Supplementary memory usage history; current numeric value remains authoritative")
+            graphTooltip: fullView.ttopTr("Memory history · approximately %1 seconds",
+                                          [fullView.historySeconds(fullView.metricRefreshIntervalMs)])
             graphBackgroundColor: fullView.baseBackgroundColor
             valueText: fullView.metricsProvider.memoryDisplayText
             progressValue: fullView.metricsProvider.memoryPercent
@@ -181,8 +214,10 @@ Rectangle {
 
         Components.TemperatureRow {
             objectName: "temperatureSection"
+            languageMode: fullView.languageMode
             visible: fullView.showTemperature
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             showIcon: fullView.showMetricIcons
             showLabel: fullView.showSectionLabels
             valueText: fullView.metricsProvider.temperatureDisplayText
@@ -192,8 +227,10 @@ Rectangle {
 
         Components.GpuSection {
             objectName: "gpuSection"
+            languageMode: fullView.languageMode
             visible: fullView.showGpu
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             backendProvider: fullView.backendProvider
             showIcon: fullView.showMetricIcons
             showLabel: fullView.showSectionLabels
@@ -204,19 +241,21 @@ Rectangle {
             showGraph: fullView.showGraphs && fullView.showGpuGraph
             graphValues: fullView.historyProvider !== null
                          ? fullView.historyProvider.gpuValues : []
-            graphAccessibleName: qsTr("GPU utilization history, last %1 samples")
-                                 .arg(fullView.historySampleCount)
-            graphDescription: qsTr("Supplementary GPU utilization history; current numeric value remains authoritative")
-            graphTooltip: qsTr("GPU utilization history · %1")
-                          .arg(fullView.approximateHistoryText(fullView.gpuRefreshIntervalMs))
+            graphAccessibleName: fullView.ttopTr("GPU utilization history, approximately %1 seconds",
+                                                 [fullView.historySeconds(fullView.gpuRefreshIntervalMs)])
+            graphDescription: fullView.ttopTr("Supplementary GPU utilization history; current numeric value remains authoritative")
+            graphTooltip: fullView.ttopTr("GPU utilization history · approximately %1 seconds",
+                                          [fullView.historySeconds(fullView.gpuRefreshIntervalMs)])
             graphBackgroundColor: fullView.baseBackgroundColor
             denseMode: fullView.denseMode
         }
 
         Components.NetworkRow {
             objectName: "networkSection"
+            languageMode: fullView.languageMode
             visible: fullView.showNetwork
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             showIcon: fullView.showMetricIcons
             showLabel: fullView.showSectionLabels
             showRx: fullView.showNetworkRx
@@ -226,10 +265,10 @@ Rectangle {
                        ? fullView.historyProvider.networkRxValues : []
             txHistory: fullView.historyProvider !== null
                        ? fullView.historyProvider.networkTxValues : []
-            graphAccessibleName: qsTr("Network receive and transmit history, last %1 samples")
-                                 .arg(fullView.historySampleCount)
-            graphDescription: qsTr("Receive is a solid line and transmit is a dashed line; current numeric values remain authoritative")
-            graphTooltip: qsTr("Network RX solid · TX dashed · dynamically scaled")
+            graphAccessibleName: fullView.ttopTr("Network receive and transmit history, approximately %1 seconds",
+                                                 [fullView.historySeconds(fullView.metricRefreshIntervalMs)])
+            graphDescription: fullView.ttopTr("Receive is a solid line and transmit is a dashed line; current numeric values remain authoritative")
+            graphTooltip: fullView.ttopTr("Network RX solid · TX dashed · dynamically scaled")
             graphBackgroundColor: fullView.baseBackgroundColor
             rxText: fullView.metricsProvider.networkRxDisplayText
             txText: fullView.metricsProvider.networkTxDisplayText
@@ -238,8 +277,10 @@ Rectangle {
 
         Components.DiskIoRow {
             objectName: "diskIoSection"
+            languageMode: fullView.languageMode
             visible: fullView.showDiskIo
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             showIcon: fullView.showMetricIcons
             showLabel: fullView.showSectionLabels
             showRead: fullView.showDiskRead
@@ -253,25 +294,28 @@ Rectangle {
             objectName: "filesystemSection"
             visible: fullView.showFilesystems
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             spacing: PlasmaCore.Units.smallSpacing
 
             Components.SectionHeader {
                 Layout.fillWidth: true
-                title: qsTr("FILESYSTEMS")
+                title: fullView.ttopTr("FILESYSTEMS")
                 iconName: "drive-harddisk"
                 showIcon: fullView.showMetricIcons
                 showLabel: fullView.showSectionLabels
                 statusText: fullView.metricsProvider.filesystemAvailable
                             ? ""
                             : fullView.metricsProvider.filesystemState === "unavailable"
-                              ? qsTr("Unavailable") : qsTr("Detecting…")
+                              ? fullView.ttopTr("Unavailable") : fullView.ttopTr("Detecting…")
             }
 
             Repeater {
                 model: fullView.metricsProvider.filesystemEntries
 
                 delegate: Components.FilesystemRow {
+                    languageMode: fullView.languageMode
                     Layout.fillWidth: true
+                    Layout.minimumWidth: 0
                     mountPath: model.mountPath
                     capacityText: model.displayText
                     percent: model.percent
@@ -282,8 +326,10 @@ Rectangle {
 
         Components.ProcessList {
             objectName: "processSection"
+            languageMode: fullView.languageMode
             visible: fullView.showProcesses
             Layout.fillWidth: true
+            Layout.minimumWidth: 0
             backendProvider: fullView.backendProvider
             showIcon: fullView.showMetricIcons
             showLabel: fullView.showSectionLabels

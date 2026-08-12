@@ -4,7 +4,8 @@
  */
 
 import QtQuick 2.15
-import "TTop/Backend" as BackendBridge
+import QtQml 2.15
+import "TTop/Runtime"
 
 Item {
     id: provider
@@ -72,9 +73,10 @@ Item {
     function setState(state, errorText) {
         backendState = state;
         backendError = errorText || "";
-        if (debugBackend && lastLoggedState !== state) {
+        if (debugBackend && (lastLoggedState !== state || backendError !== "")) {
             lastLoggedState = state;
-            console.log("TTop Desk backend: state changed to " + state);
+            console.log("TTop Desk backend: state changed to " + state
+                        + (backendError !== "" ? " (" + backendError + ")" : ""));
         }
     }
 
@@ -86,9 +88,10 @@ Item {
     function setGpuState(state, errorText) {
         gpuState = state;
         gpuError = errorText || "";
-        if (debugBackend && lastLoggedGpuState !== state) {
+        if (debugBackend && (lastLoggedGpuState !== state || gpuError !== "")) {
             lastLoggedGpuState = state;
-            console.log("TTop Desk GPU: state changed to " + state);
+            console.log("TTop Desk GPU: state changed to " + state
+                        + (gpuError !== "" ? " (" + gpuError + ")" : ""));
         }
     }
 
@@ -445,6 +448,7 @@ Item {
         property: "socketPath"
         value: provider.socketPath
         when: provider.socketClient !== null
+        restoreMode: Binding.RestoreBinding
     }
 
     Connections {
@@ -453,6 +457,11 @@ Item {
             provider.completeResponse(jsonLine);
         }
         function onTransportError(errorCode) {
+            if (provider.debugBackend) {
+                console.log("TTop Desk backend: transport " + errorCode
+                            + " at " + provider.socketPath + " ("
+                            + provider.socketClient.errorString + ")");
+            }
             provider.inFlightCommand = "";
             provider.requestQueue = [];
             provider.clearProcesses();

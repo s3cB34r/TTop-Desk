@@ -27,10 +27,11 @@ Item {
     }
 
     function runProbe() {
-        if (graph.implicitHeight !== 24 || graph.backingStoreSize.width < graph.width
-                || graph.backingStoreSize.height < graph.height
+        if (graph.implicitHeight !== 24
+                || graph.backingStoreSize.width !== Math.ceil(graph.width)
+                || graph.backingStoreSize.height !== Math.ceil(graph.height)
                 || graph.accessibleName !== "Network history") {
-            fail("logical size, HiDPI backing store, or accessibility metadata is incorrect");
+            fail("logical Canvas size or accessibility metadata is incorrect");
             return;
         }
         graph.values = [50];
@@ -38,7 +39,7 @@ Item {
         graph.values = [50, 50, 50];
         graph.secondaryValues = [10, 20, 30];
         graph.width = 120;
-        if (graph.backingStoreSize.width < 120 || !graph.secondaryDashed) {
+        if (graph.backingStoreSize.width !== 120 || !graph.secondaryDashed) {
             fail("resize or dashed-series state is incorrect");
             return;
         }

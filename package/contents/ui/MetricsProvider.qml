@@ -10,11 +10,17 @@
 import QtQuick 2.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.ksysguard.sensors 1.0 as Sensors
+import "TTop/Runtime"
 
 Item {
     id: provider
 
+    property string languageMode: "en"
     property bool debugMetrics: false
+
+    function ttopTr(source, values) {
+        return ttopTranslations.text(languageMode, source, values || []);
+    }
 
     // Configuration-facing inputs. The effective values are clamped here as
     // a second line of defence in case an older or hand-edited configuration
@@ -53,7 +59,8 @@ Item {
                     + formatBytes(memoryTotalBytes);
         }
 
-        return memoryPercent.toFixed(1) + "%  ·  size unavailable";
+            return provider.ttopTr("%1 · size unavailable",
+                                   [memoryPercent.toFixed(1) + "%"]);
     }
 
     readonly property bool networkAvailable: networkState === "available"
@@ -316,7 +323,7 @@ Item {
 
     function formatBytes(bytes) {
         if (!isFinite(bytes) || bytes < 0) {
-            return "Unavailable";
+            return provider.ttopTr("Unavailable");
         }
 
         var gibibyte = 1024 * 1024 * 1024;
@@ -329,7 +336,7 @@ Item {
 
     function formatCapacity(bytes) {
         if (!isFinite(bytes) || bytes < 0) {
-            return "Unavailable";
+            return provider.ttopTr("Unavailable");
         }
 
         var units = ["B", "KiB", "MiB", "GiB", "TiB"];
@@ -344,7 +351,7 @@ Item {
 
     function formatByteRate(bytesPerSecond) {
         if (!isFinite(bytesPerSecond) || bytesPerSecond < 0) {
-            return "Unavailable";
+            return provider.ttopTr("Unavailable");
         }
 
         var units = ["B/s", "KiB/s", "MiB/s", "GiB/s"];

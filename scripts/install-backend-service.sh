@@ -68,8 +68,11 @@ trap - EXIT
 
 systemctl --user daemon-reload
 systemctl --user enable "${UNIT_NAME}"
-systemctl --user start "${UNIT_NAME}"
+systemctl --user restart "${UNIT_NAME}"
+systemctl --user is-enabled --quiet "${UNIT_NAME}"
 systemctl --user is-active --quiet "${UNIT_NAME}"
 
 echo "Installed ${UNIT_NAME} at ${INSTALLED_UNIT}"
+echo "Enabled: $(systemctl --user is-enabled "${UNIT_NAME}")"
+echo "Active:  $(systemctl --user is-active "${UNIT_NAME}")"
 systemctl --user status --no-pager "${UNIT_NAME}"
