@@ -43,6 +43,9 @@ Item {
     readonly property bool showMemoryGraph: Plasmoid.configuration.showMemoryGraph
     readonly property bool showGpuGraph: Plasmoid.configuration.showGpuGraph
     readonly property bool showNetworkGraph: Plasmoid.configuration.showNetworkGraph
+    readonly property bool showCompactGraphs: Plasmoid.configuration.showCompactGraphs
+    readonly property string compactGraphMetric:
+        Configuration.compactGraphMetric(Plasmoid.configuration.compactGraphMetric)
     readonly property bool showNetworkRx: Plasmoid.configuration.showNetworkRx
     readonly property bool showNetworkTx: Plasmoid.configuration.showNetworkTx
     readonly property bool showDiskRead: Plasmoid.configuration.showDiskRead
@@ -114,6 +117,28 @@ Item {
         gpuRefreshIntervalMs: root.safeGpuRefreshIntervalMs
     }
 
+    MetricHistory {
+        id: metricHistory
+
+        metricsProvider: metrics
+        backendProvider: backend
+        maximumSamples: root.safeHistorySampleCount
+        cpuEnabled: root.showCpu
+                    && ((root.showGraphs && root.showCpuGraph)
+                        || (root.showCompactGraphs && root.compactGraphMetric === "cpu"))
+        memoryEnabled: root.showMemory
+                       && ((root.showGraphs && root.showMemoryGraph)
+                           || (root.showCompactGraphs && root.compactGraphMetric === "memory"))
+        gpuEnabled: root.showGpu
+                    && ((root.showGraphs && root.showGpuGraph)
+                        || (root.showCompactGraphs && root.compactGraphMetric === "gpu"))
+        networkEnabled: root.showNetwork
+                        && ((root.showGraphs && root.showNetworkGraph)
+                            || (root.showCompactGraphs && root.compactGraphMetric === "network"))
+        networkRxEnabled: root.showNetworkRx
+        networkTxEnabled: root.showNetworkTx
+    }
+
     Component {
         id: compactRepresentation
 
@@ -126,7 +151,11 @@ Item {
             showMetricIcons: root.showMetricIcons
             compactModeDetails: root.compactModeDetails
             backendProvider: backend
+            historyProvider: metricHistory
             showGpu: root.showGpu
+            showCompactGraphs: root.showCompactGraphs
+            compactGraphMetric: root.compactGraphMetric
+            historySampleCount: root.safeHistorySampleCount
             widgetTitle: root.widgetTitle
             formFactor: Plasmoid.formFactor
         }
@@ -138,6 +167,7 @@ Item {
         FullRepresentation {
             metricsProvider: metrics
             backendProvider: backend
+            historyProvider: metricHistory
             showCpu: root.showCpu
             showMemory: root.showMemory
             showNetwork: root.showNetwork
@@ -164,6 +194,8 @@ Item {
             showGpuGraph: root.showGpuGraph
             showNetworkGraph: root.showNetworkGraph
             historySampleCount: root.safeHistorySampleCount
+            metricRefreshIntervalMs: root.safeRefreshIntervalMs
+            gpuRefreshIntervalMs: root.safeGpuRefreshIntervalMs
             showNetworkRx: root.showNetworkRx
             showNetworkTx: root.showNetworkTx
             showDiskRead: root.showDiskRead

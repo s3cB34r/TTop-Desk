@@ -20,6 +20,10 @@ ColumnLayout {
     property bool showProgressBars: true
     property bool showGraph: false
     property var graphValues: []
+    property string graphAccessibleName: qsTr("GPU utilization history")
+    property string graphDescription: ""
+    property string graphTooltip: ""
+    property color graphBackgroundColor: PlasmaCore.Theme.backgroundColor
     property bool denseMode: false
 
     readonly property bool available: backendProvider !== null
@@ -103,6 +107,10 @@ ColumnLayout {
         values: section.graphValues
         minimumValue: 0
         maximumValue: 100
+        accessibleName: section.graphAccessibleName
+        accessibleDescription: section.graphDescription
+        tooltipText: section.graphTooltip
+        backgroundColor: section.graphBackgroundColor
     }
 
     RowLayout {

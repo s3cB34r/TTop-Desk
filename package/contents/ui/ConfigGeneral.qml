@@ -48,6 +48,8 @@ Kirigami.FormLayout {
     property alias cfg_showMemoryGraph: showMemoryGraph.checked
     property alias cfg_showGpuGraph: showGpuGraph.checked
     property alias cfg_showNetworkGraph: showNetworkGraph.checked
+    property alias cfg_showCompactGraphs: showCompactGraphs.checked
+    property string cfg_compactGraphMetric: "cpu"
     property int cfg_historySampleCount: 60
     property int cfg_gpuRefreshIntervalMs: 1000
     property int cfg_refreshIntervalMs: 1000
@@ -208,6 +210,33 @@ Kirigami.FormLayout {
         currentIndex: configPage.optionIndex(configPage.cfg_historySampleCount,
                                              [30, 60, 120], 1)
         onActivated: configPage.cfg_historySampleCount = currentValue
+    }
+
+    Kirigami.Heading {
+        Kirigami.FormData.isSection: true
+        level: 4
+        text: qsTr("Compact")
+    }
+
+    QtControls.CheckBox {
+        id: showCompactGraphs
+        text: qsTr("Show graphs in compact view")
+    }
+
+    QtControls.ComboBox {
+        Kirigami.FormData.label: qsTr("Compact graph metric:")
+        enabled: showCompactGraphs.checked
+        textRole: "label"
+        valueRole: "metric"
+        model: [
+            { "label": qsTr("CPU usage"), "metric": "cpu" },
+            { "label": qsTr("Memory usage"), "metric": "memory" },
+            { "label": qsTr("GPU utilization"), "metric": "gpu" },
+            { "label": qsTr("Network RX/TX"), "metric": "network" }
+        ]
+        currentIndex: configPage.optionIndex(configPage.cfg_compactGraphMetric,
+                                             ["cpu", "memory", "gpu", "network"], 0)
+        onActivated: configPage.cfg_compactGraphMetric = currentValue
     }
 
     Kirigami.Heading {

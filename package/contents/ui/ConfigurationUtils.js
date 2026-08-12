@@ -19,6 +19,11 @@ function processSort(value) {
     return value === "memory" ? "memory" : "cpu";
 }
 
+function compactGraphMetric(value) {
+    return ["cpu", "memory", "gpu", "network"].indexOf(value) !== -1
+            ? value : "cpu";
+}
+
 function opacity(value) {
     var number = Number(value);
     if (!isFinite(number)) return 1.0;

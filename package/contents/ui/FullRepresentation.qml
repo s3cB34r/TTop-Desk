@@ -15,6 +15,7 @@ Rectangle {
 
     property var metricsProvider
     property var backendProvider
+    property var historyProvider: null
     property bool showCpu: true
     property bool showMemory: true
     property bool showNetwork: true
@@ -41,6 +42,8 @@ Rectangle {
     property bool showGpuGraph: true
     property bool showNetworkGraph: true
     property int historySampleCount: 60
+    property int metricRefreshIntervalMs: 1000
+    property int gpuRefreshIntervalMs: 1000
     property bool showNetworkRx: true
     property bool showNetworkTx: true
     property bool showDiskRead: true
@@ -63,6 +66,11 @@ Rectangle {
                                                  ? PlasmaCore.Theme.backgroundColor
                                                  : customBackgroundColor
 
+    function approximateHistoryText(intervalMs) {
+        var seconds = Math.max(1, Math.round(historySampleCount * intervalMs / 1000));
+        return qsTr("approximately %1 seconds").arg(seconds);
+    }
+
     implicitWidth: preferredCardWidth
     implicitHeight: content.implicitHeight + contentMargin * 2
 
@@ -78,20 +86,6 @@ Rectangle {
                           PlasmaCore.Theme.highlightColor.g,
                           PlasmaCore.Theme.highlightColor.b, 0.35)
     border.width: 1
-
-    MetricHistory {
-        id: metricHistory
-        metricsProvider: fullView.metricsProvider
-        backendProvider: fullView.backendProvider
-        maximumSamples: fullView.historySampleCount
-        cpuEnabled: fullView.showGraphs && fullView.showCpu && fullView.showCpuGraph
-        memoryEnabled: fullView.showGraphs && fullView.showMemory && fullView.showMemoryGraph
-        gpuEnabled: fullView.showGraphs && fullView.showGpu && fullView.showGpuGraph
-        networkEnabled: fullView.showGraphs && fullView.showNetwork
-                        && fullView.showNetworkGraph
-        networkRxEnabled: fullView.showNetworkRx
-        networkTxEnabled: fullView.showNetworkTx
-    }
 
     ColumnLayout {
         id: content
@@ -148,7 +142,14 @@ Rectangle {
             showLabel: fullView.showSectionLabels
             showProgressBar: fullView.showCpuProgressBar
             showGraph: fullView.showGraphs && fullView.showCpuGraph
-            graphValues: metricHistory.cpuValues
+            graphValues: fullView.historyProvider !== null
+                         ? fullView.historyProvider.cpuValues : []
+            graphAccessibleName: qsTr("CPU history, last %1 samples")
+                                 .arg(fullView.historySampleCount)
+            graphDescription: qsTr("Supplementary CPU usage history; current numeric value remains authoritative")
+            graphTooltip: qsTr("CPU history · %1")
+                          .arg(fullView.approximateHistoryText(fullView.metricRefreshIntervalMs))
+            graphBackgroundColor: fullView.baseBackgroundColor
             valueText: fullView.metricsProvider.cpuAvailable
                        ? fullView.metricsProvider.cpuPercent.toFixed(1) + "%" : ""
             progressValue: fullView.metricsProvider.cpuPercent
@@ -165,7 +166,14 @@ Rectangle {
             showLabel: fullView.showSectionLabels
             showProgressBar: fullView.showMemoryProgressBar
             showGraph: fullView.showGraphs && fullView.showMemoryGraph
-            graphValues: metricHistory.memoryValues
+            graphValues: fullView.historyProvider !== null
+                         ? fullView.historyProvider.memoryValues : []
+            graphAccessibleName: qsTr("Memory usage history, last %1 samples")
+                                 .arg(fullView.historySampleCount)
+            graphDescription: qsTr("Supplementary memory usage history; current numeric value remains authoritative")
+            graphTooltip: qsTr("Memory history · %1")
+                          .arg(fullView.approximateHistoryText(fullView.metricRefreshIntervalMs))
+            graphBackgroundColor: fullView.baseBackgroundColor
             valueText: fullView.metricsProvider.memoryDisplayText
             progressValue: fullView.metricsProvider.memoryPercent
             availabilityState: fullView.metricsProvider.memoryState
@@ -194,7 +202,14 @@ Rectangle {
             showTemperature: fullView.showGpuTemperature
             showProgressBars: fullView.showGpuProgressBars
             showGraph: fullView.showGraphs && fullView.showGpuGraph
-            graphValues: metricHistory.gpuValues
+            graphValues: fullView.historyProvider !== null
+                         ? fullView.historyProvider.gpuValues : []
+            graphAccessibleName: qsTr("GPU utilization history, last %1 samples")
+                                 .arg(fullView.historySampleCount)
+            graphDescription: qsTr("Supplementary GPU utilization history; current numeric value remains authoritative")
+            graphTooltip: qsTr("GPU utilization history · %1")
+                          .arg(fullView.approximateHistoryText(fullView.gpuRefreshIntervalMs))
+            graphBackgroundColor: fullView.baseBackgroundColor
             denseMode: fullView.denseMode
         }
 
@@ -207,8 +222,15 @@ Rectangle {
             showRx: fullView.showNetworkRx
             showTx: fullView.showNetworkTx
             showGraph: fullView.showGraphs && fullView.showNetworkGraph
-            rxHistory: metricHistory.networkRxValues
-            txHistory: metricHistory.networkTxValues
+            rxHistory: fullView.historyProvider !== null
+                       ? fullView.historyProvider.networkRxValues : []
+            txHistory: fullView.historyProvider !== null
+                       ? fullView.historyProvider.networkTxValues : []
+            graphAccessibleName: qsTr("Network receive and transmit history, last %1 samples")
+                                 .arg(fullView.historySampleCount)
+            graphDescription: qsTr("Receive is a solid line and transmit is a dashed line; current numeric values remain authoritative")
+            graphTooltip: qsTr("Network RX solid · TX dashed · dynamically scaled")
+            graphBackgroundColor: fullView.baseBackgroundColor
             rxText: fullView.metricsProvider.networkRxDisplayText
             txText: fullView.metricsProvider.networkTxDisplayText
             availabilityState: fullView.metricsProvider.networkState

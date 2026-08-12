@@ -76,6 +76,18 @@ Item {
         function onMemoryPercentChanged() { history.appendMemory(); }
         function onNetworkRxBytesPerSecondChanged() { history.appendNetworkRx(); }
         function onNetworkTxBytesPerSecondChanged() { history.appendNetworkTx(); }
+        function onCpuStateChanged() {
+            if (history.metricsProvider.cpuState !== "available") cpuBuffer.clear();
+        }
+        function onMemoryStateChanged() {
+            if (history.metricsProvider.memoryState !== "available") memoryBuffer.clear();
+        }
+        function onNetworkStateChanged() {
+            if (history.metricsProvider.networkState !== "available") {
+                networkRxBuffer.clear();
+                networkTxBuffer.clear();
+            }
+        }
     }
 
     Connections {

@@ -40,6 +40,8 @@ class ConfigurationSchemaTests(unittest.TestCase):
             "showMemoryGraph": "true",
             "showGpuGraph": "true",
             "showNetworkGraph": "true",
+            "showCompactGraphs": "false",
+            "compactGraphMetric": "cpu",
             "showNetworkRx": "true",
             "showNetworkTx": "true",
             "showDiskRead": "true",
@@ -84,7 +86,7 @@ class ConfigurationSchemaTests(unittest.TestCase):
     def test_plugin_identity_is_unchanged(self) -> None:
         metadata = json.loads((PACKAGE_ROOT / "metadata.json").read_text(encoding="utf-8"))
         self.assertEqual(metadata["KPlugin"]["Id"], "io.github.s3cb34r.ttopdesk")
-        self.assertEqual(metadata["KPlugin"]["Version"], "0.1.13")
+        self.assertEqual(metadata["KPlugin"]["Version"], "0.1.14")
 
 
 if __name__ == "__main__":

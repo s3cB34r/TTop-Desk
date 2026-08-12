@@ -89,10 +89,20 @@ Item {
         id: card
         metricsProvider: metrics
         backendProvider: backend
+        historyProvider: history
         width: implicitWidth
         height: implicitHeight
         showProcesses: true
         showGpu: false
+    }
+
+    QtObject {
+        id: history
+        property var cpuValues: [10, 15, 20]
+        property var memoryValues: [35, 38, 40]
+        property var gpuValues: []
+        property var networkRxValues: [524288, 786432, 1048576]
+        property var networkTxValues: [262144, 393216, 524288]
     }
 
     Timer {

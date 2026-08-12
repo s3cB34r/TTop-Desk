@@ -20,6 +20,10 @@ ColumnLayout {
     property bool showGraph: false
     property var rxHistory: []
     property var txHistory: []
+    property string graphAccessibleName: qsTr("Network receive and transmit history")
+    property string graphDescription: qsTr("Receive is solid; transmit is dashed")
+    property string graphTooltip: qsTr("RX solid · TX dashed · dynamically scaled")
+    property color graphBackgroundColor: PlasmaCore.Theme.backgroundColor
     // Supported states: "loading", "available", and "unavailable".
     property string availabilityState: "loading"
 
@@ -76,5 +80,10 @@ ColumnLayout {
         showSecondary: row.showTx
         dynamicScale: true
         dynamicMinimumMaximum: 1024
+        secondaryDashed: true
+        accessibleName: row.graphAccessibleName
+        accessibleDescription: row.graphDescription
+        tooltipText: row.graphTooltip
+        backgroundColor: row.graphBackgroundColor
     }
 }

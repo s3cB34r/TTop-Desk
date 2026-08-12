@@ -4,6 +4,16 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
+Milestone 1.14 hardens sparklines for accessibility, Plasma theme contrast,
+and HiDPI rendering. Graphs now expose static accessible descriptions and
+tooltips without announcing every sample; network RX is solid while TX is
+dashed so color is not the only distinction. Canvas backing stores follow the
+screen device-pixel ratio while logical layout sizes remain unchanged. An
+optional single compact-view graph can show CPU, memory, GPU, or network
+history; it is disabled by default and hides when space or its selected metric
+is unavailable. History remains bounded and in-memory only, and no backend or
+protocol changes are involved.
+
 Milestone 1.13 adds lightweight live-history sparklines for CPU, RAM, NVIDIA
 GPU utilization, and network receive/transmit throughput. History is held only
 in bounded QML memory, is never persisted or transmitted, and supports 30, 60,
@@ -110,6 +120,18 @@ metric refresh events without an additional timer. History is bounded,
 in-memory only, and discarded with the widget; it is not telemetry and is not
 written to disk. If the backend stops, GPU history pauses and clears while
 CPU, RAM, and network histories continue normally.
+
+Each full graph has a concise tooltip and accessibility description; current
+numeric labels remain authoritative. Network receive uses a solid line and
+transmit uses a dashed, slightly subdued line. Sparkline colors prefer the
+Plasma highlight but fall back to theme text color when it provides safer
+contrast against the configured card background.
+
+Compact graphs are disabled by default, preserving the Milestone 1.13 panel
+layout. Enabling **Show graphs in compact view** adds one 12-pixel history line
+without changing the compact representation's preferred dimensions. The
+selector offers CPU, memory, GPU, or network; unavailable, disabled, or
+undersized selections hide gracefully without rewriting the saved choice.
 
 The read-only process section displays 3, 4, or 5 rows, refreshes every 1, 2,
 or 5 seconds, and can sort by CPU or resident memory. The provider sends the

@@ -84,6 +84,12 @@
     <entry name="showNetworkGraph" type="Bool">
       <default>true</default>
     </entry>
+    <entry name="showCompactGraphs" type="Bool">
+      <default>false</default>
+    </entry>
+    <entry name="compactGraphMetric" type="String">
+      <default>cpu</default>
+    </entry>
     <entry name="showNetworkRx" type="Bool">
       <default>true</default>
     </entry>

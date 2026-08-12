@@ -18,6 +18,10 @@ ColumnLayout {
     property bool showProgressBar: true
     property bool showGraph: false
     property var graphValues: []
+    property string graphAccessibleName: qsTr("Metric history")
+    property string graphDescription: ""
+    property string graphTooltip: ""
+    property color graphBackgroundColor: PlasmaCore.Theme.backgroundColor
     property string valueText: ""
     property real progressValue: 0
     // Supported states: "loading", "available", and "unavailable".
@@ -84,5 +88,9 @@ ColumnLayout {
         values: row.graphValues
         minimumValue: 0
         maximumValue: 100
+        accessibleName: row.graphAccessibleName
+        accessibleDescription: row.graphDescription
+        tooltipText: row.graphTooltip
+        backgroundColor: row.graphBackgroundColor
     }
 }

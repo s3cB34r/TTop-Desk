@@ -7,12 +7,14 @@ import QtQuick 2.15
 import QtQuick.Layouts 1.15
 import org.kde.plasma.core 2.0 as PlasmaCore
 import org.kde.plasma.components 2.0 as PlasmaComponents
+import "components" as Components
 
 Item {
     id: compactView
 
     property var metricsProvider
     property var backendProvider
+    property var historyProvider: null
     property bool showCpu: true
     property bool showMemory: true
     property bool showNetwork: true
@@ -20,15 +22,53 @@ Item {
     property bool showGpu: true
     property bool showMetricIcons: true
     property bool compactModeDetails: false
+    property bool showCompactGraphs: false
+    property string compactGraphMetric: "cpu"
+    property int historySampleCount: 60
     property string widgetTitle: "TTop Desk"
     property int formFactor: PlasmaCore.Types.Planar
 
     readonly property bool vertical: formFactor === PlasmaCore.Types.Vertical
+    readonly property string effectiveCompactGraphMetric:
+        ["cpu", "memory", "gpu", "network"].indexOf(compactGraphMetric) !== -1
+        ? compactGraphMetric : "cpu"
     readonly property int visibleMetricCount:
         (showCpu ? 1 : 0) + (showMemory ? 1 : 0)
         + (compactModeDetails && showNetwork ? 1 : 0)
         + (compactModeDetails && showTemperature ? 1 : 0)
         + (compactModeDetails && showGpu ? 1 : 0)
+    readonly property bool selectedGraphSectionEnabled:
+        effectiveCompactGraphMetric === "cpu" ? showCpu
+        : effectiveCompactGraphMetric === "memory" ? showMemory
+        : effectiveCompactGraphMetric === "gpu" ? showGpu
+        : effectiveCompactGraphMetric === "network" ? showNetwork : false
+    readonly property bool selectedGraphAvailable:
+        effectiveCompactGraphMetric === "cpu" ? metricsProvider.cpuState === "available"
+        : effectiveCompactGraphMetric === "memory" ? metricsProvider.memoryState === "available"
+        : effectiveCompactGraphMetric === "gpu" ? backendProvider !== null
+                                         && backendProvider.gpuState === "available"
+        : effectiveCompactGraphMetric === "network" ? metricsProvider.networkState === "available"
+        : false
+    readonly property var compactPrimaryValues:
+        historyProvider === null ? []
+        : effectiveCompactGraphMetric === "cpu" ? historyProvider.cpuValues
+        : effectiveCompactGraphMetric === "memory" ? historyProvider.memoryValues
+        : effectiveCompactGraphMetric === "gpu" ? historyProvider.gpuValues
+        : historyProvider.networkRxValues
+    readonly property var compactSecondaryValues:
+        historyProvider !== null && effectiveCompactGraphMetric === "network"
+        ? historyProvider.networkTxValues : []
+    readonly property bool compactGraphVisible:
+        showCompactGraphs && selectedGraphSectionEnabled && selectedGraphAvailable
+        && (compactPrimaryValues.length > 0 || compactSecondaryValues.length > 0)
+        && width >= PlasmaCore.Units.gridUnit * 4
+        && height >= PlasmaCore.Units.gridUnit * 2
+    readonly property int compactGraphHeight: 12
+    readonly property string compactGraphName:
+        effectiveCompactGraphMetric === "cpu" ? qsTr("CPU history")
+        : effectiveCompactGraphMetric === "memory" ? qsTr("Memory usage history")
+        : effectiveCompactGraphMetric === "gpu" ? qsTr("GPU utilization history")
+        : qsTr("Network receive and transmit history")
 
     Layout.preferredWidth: vertical
                            ? PlasmaCore.Units.gridUnit * 5
@@ -46,7 +86,13 @@ Item {
 
     GridLayout {
         anchors.fill: parent
-        anchors.margins: PlasmaCore.Units.smallSpacing
+        anchors.leftMargin: PlasmaCore.Units.smallSpacing
+        anchors.rightMargin: PlasmaCore.Units.smallSpacing
+        anchors.topMargin: PlasmaCore.Units.smallSpacing
+        anchors.bottomMargin: compactView.compactGraphVisible
+                              ? PlasmaCore.Units.smallSpacing
+                                + compactView.compactGraphHeight
+                              : PlasmaCore.Units.smallSpacing
         columns: compactView.vertical ? 1 : Math.max(1, compactView.visibleMetricCount)
         rowSpacing: PlasmaCore.Units.smallSpacing
         columnSpacing: PlasmaCore.Units.largeSpacing
@@ -286,5 +332,35 @@ Item {
                 elide: Text.ElideRight
             }
         }
+    }
+
+    Components.Sparkline {
+        id: compactGraph
+        objectName: "compactSparkline"
+        visible: compactView.compactGraphVisible
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: PlasmaCore.Units.smallSpacing
+        anchors.rightMargin: PlasmaCore.Units.smallSpacing
+        anchors.bottomMargin: 1
+        height: compactView.compactGraphHeight
+        values: compactView.compactPrimaryValues
+        secondaryValues: compactView.compactSecondaryValues
+        showSecondary: compactView.effectiveCompactGraphMetric === "network"
+        dynamicScale: compactView.effectiveCompactGraphMetric === "network"
+        dynamicMinimumMaximum: 1024
+        minimumValue: 0
+        maximumValue: 100
+        secondaryDashed: true
+        accessibleName: compactView.compactGraphName + qsTr(", last %1 samples")
+                        .arg(compactView.historySampleCount)
+        accessibleDescription: compactView.effectiveCompactGraphMetric === "network"
+                               ? qsTr("Receive is solid and transmit is dashed; numeric values remain authoritative")
+                               : qsTr("Supplementary history graph; numeric values remain authoritative")
+        tooltipText: compactView.effectiveCompactGraphMetric === "network"
+                     ? qsTr("RX solid · TX dashed · dynamically scaled")
+                     : qsTr("Last %1 samples").arg(compactView.historySampleCount)
+        backgroundColor: PlasmaCore.Theme.backgroundColor
     }
 }
