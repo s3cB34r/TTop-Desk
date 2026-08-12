@@ -4,7 +4,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: TTop Desk 0.1.15\n"
+"Project-Id-Version: TTop Desk 0.9.0\n"
 "Report-Msgid-Bugs-To: https://github.com/s3cb34r/TTop-Desk/issues\n"
 "POT-Creation-Date: 2026-08-12 13:21+0200\n"
 "PO-Revision-Date: 2026-08-12 00:00+0200\n"

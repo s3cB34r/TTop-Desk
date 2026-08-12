@@ -127,3 +127,33 @@ Before a release, also launch the production widget for sixty seconds, exercise
 the settings page in English and German, inspect both theme variants, confirm
 the optional backend states, and review the candidate image matrix. Record any
 display/session limitation rather than manufacturing a passing result.
+
+## Building release artifacts
+
+`VERSION` is the central release version source. `package/metadata.json` must
+match it; CMake and release scripts read it directly. Release notes and the
+changelog record the corresponding public version. Build the complete local
+release candidate with one command:
+
+```bash
+./scripts/build-release.sh
+```
+
+The builder reports a dirty worktree but does not modify Git state. It runs the
+required checks, builds the native QML runtime, compiles translations, creates
+the `.plasmoid`, creates a backend-only archive, assembles the standalone Linux
+bundle, generates sorted SHA-256 manifests, and validates archive contents and
+development-path exclusion. Generated output is replaced atomically below the
+ignored `dist/` directory; it is never committed or published automatically.
+
+After building, run the artifact-specific release check explicitly:
+
+```bash
+./scripts/release-check.sh --release
+```
+
+Before publication, extract the full bundle in a clean environment and test
+install, repeated install, uninstall, and reinstall. Inspect all archive lists,
+verify service enablement and its mode-0600 socket, exercise process and GPU
+requests, and confirm the installed unit references only the user data path.
+Do not substitute repository installation for this release smoke test.

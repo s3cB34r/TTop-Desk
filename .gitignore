@@ -28,3 +28,6 @@ package/contents/ui/TTop/Runtime/libttopruntimeplugin.so
 *.tmp
 *.temp
 .cache/
+
+# Generated release artifacts
+dist/

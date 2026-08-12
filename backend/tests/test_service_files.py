@@ -47,6 +47,20 @@ class ServiceFileTests(unittest.TestCase):
         self.assertIn('systemctl --user is-enabled --quiet "${UNIT_NAME}"', script)
         self.assertIn('systemctl --user is-active --quiet "${UNIT_NAME}"', script)
 
+    def test_release_unit_is_user_local_and_portable(self) -> None:
+        unit = (
+            REPOSITORY_ROOT / "release" / "ttop-desk-backend.service.in"
+        ).read_text(encoding="utf-8")
+        self.assertIn("WorkingDirectory=@BACKEND_DIRECTORY@", unit)
+        self.assertIn("ExecStart=@PYTHON_EXECUTABLE@ -m ttop_backend.main", unit)
+        self.assertIn("RestrictAddressFamilies=AF_UNIX", unit)
+        self.assertIn("UMask=0077", unit)
+        self.assertNotIn("@REPOSITORY_ROOT@", unit)
+        self.assertNotIn("/data/Projects/TTop-Desk", unit)
+        self.assertNotIn("PrivateTmp=true", unit)
+        self.assertNotIn("AF_INET", unit)
+        self.assertNotRegex(unit, r"(?m)^User=")
+
     def test_uninstaller_targets_only_managed_unit(self) -> None:
         script = (
             REPOSITORY_ROOT / "scripts/uninstall-backend-service.sh"

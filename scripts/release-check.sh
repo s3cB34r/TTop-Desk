@@ -8,15 +8,18 @@ cd -- "${REPOSITORY_ROOT}"
 
 RUN_VISUAL=false
 RUN_BACKEND_STATUS=false
+RUN_RELEASE=false
 while (($# > 0)); do
     case "$1" in
         --visual) RUN_VISUAL=true ;;
         --backend-status) RUN_BACKEND_STATUS=true ;;
+        --release) RUN_RELEASE=true ;;
         --help)
             printf '%s\n' \
-                'Usage: scripts/release-check.sh [--visual] [--backend-status]' \
+                'Usage: scripts/release-check.sh [--visual] [--backend-status] [--release]' \
                 '  --visual          Capture full and compact views at 1x, 1.5x, and 2x' \
-                '  --backend-status  Report the optional user-service state'
+                '  --backend-status  Report the optional user-service state' \
+                '  --release         Require and validate generated dist artifacts'
             exit 0
             ;;
         *) printf 'Unknown option: %s\n' "$1" >&2; exit 2 ;;
@@ -62,7 +65,7 @@ for name in sys.argv[1:]:
 }
 
 check_shell() {
-    mapfile -d '' files < <(find scripts tests/visual -type f -name '*.sh' -print0 | sort -z)
+    mapfile -d '' files < <(find scripts release tests/visual -type f -name '*.sh' -print0 | sort -z)
     bash -n "${files[@]}"
 }
 
@@ -101,6 +104,7 @@ check_translations() {
 check_package_structure() {
     python3 -c 'import json, pathlib
 root = pathlib.Path("package")
+version = pathlib.Path("VERSION").read_text(encoding="utf-8").strip()
 required = [root / "metadata.json", root / "contents/ui/main.qml",
             root / "contents/config/config.qml", root / "contents/config/main.xml",
             root / "contents/ui/TTop/Runtime/qmldir",
@@ -111,8 +115,17 @@ if missing:
 metadata = json.loads((root / "metadata.json").read_text(encoding="utf-8"))
 plugin = metadata["KPlugin"]
 assert plugin["Id"] == "io.github.s3cb34r.ttopdesk"
-assert plugin["Version"] == "0.1.15"
+assert plugin["Version"] == version
 assert metadata["X-Plasma-MainScript"] == "ui/main.qml"'
+}
+
+check_release_service_template() {
+    local instantiated_unit="${TEMPORARY_DIRECTORY}/ttop-desk-backend.service"
+    sed -e 's|@BACKEND_DIRECTORY@|/tmp/ttop-desk-backend|g' \
+        -e 's|@PYTHON_EXECUTABLE@|"/usr/bin/python3"|g' \
+        -e 's|@BACKEND_DOCUMENTATION@|"file:///tmp/ttop-desk-backend/README.md"|g' \
+        release/ttop-desk-backend.service.in >"${instantiated_unit}"
+    systemd-analyze --user verify "${instantiated_unit}"
 }
 
 check_installed_service_unit() {
@@ -159,6 +172,7 @@ if command -v python3 >/dev/null 2>&1; then
     run_check "Widget-local translation keys and German coverage" \
         python3 scripts/check-translations.py
     run_check "Plasma package structure" check_package_structure
+    run_check "Release source/version consistency" python3 scripts/validate-release.py
 else
     fail "Python 3 is required"
 fi
@@ -184,6 +198,12 @@ else
 fi
 
 run_check "Whitespace errors" git diff --check
+
+if command -v systemd-analyze >/dev/null 2>&1; then
+    run_check "Release backend service template" check_release_service_template
+else
+    skip "systemd-analyze unavailable; release service template not exercised"
+fi
 
 INSTALLED_UNIT="${XDG_CONFIG_HOME:-${HOME}/.config}/systemd/user/ttop-desk-backend.service"
 if command -v systemd-analyze >/dev/null 2>&1 && [[ -f "${INSTALLED_UNIT}" ]]; then
@@ -215,6 +235,20 @@ if [[ "${RUN_BACKEND_STATUS}" == true ]]; then
     fi
 else
     skip "Backend user-service status not requested (use --backend-status)"
+fi
+
+if [[ "${RUN_RELEASE}" == true ]]; then
+    if [[ -d "${REPOSITORY_ROOT}/dist" ]]; then
+        run_check "Generated release artifacts" \
+            python3 scripts/validate-release.py --dist "${REPOSITORY_ROOT}/dist"
+        run_check "Generated release checksums" \
+            bash -c 'cd "$1" && sha256sum --check --strict --quiet SHA256SUMS' \
+            _ "${REPOSITORY_ROOT}/dist"
+    else
+        fail "Generated dist artifacts are required with --release"
+    fi
+else
+    skip "Generated release artifacts not requested (use --release)"
 fi
 
 printf 'Summary: %d passed, %d failed, %d skipped.\n' \

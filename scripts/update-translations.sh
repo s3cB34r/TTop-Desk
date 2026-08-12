@@ -5,6 +5,18 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 readonly REPOSITORY_ROOT
 
+VERSION_FILE="${REPOSITORY_ROOT}/VERSION"
+if [[ ! -f "${VERSION_FILE}" ]]; then
+    printf 'ERROR: missing version source: %s\n' "${VERSION_FILE}" >&2
+    exit 1
+fi
+PROJECT_VERSION="$(<"${VERSION_FILE}")"
+if [[ ! "${PROJECT_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    printf 'ERROR: invalid release version: %s\n' "${PROJECT_VERSION}" >&2
+    exit 1
+fi
+readonly PROJECT_VERSION
+
 CATALOG_DOMAIN="plasma_applet_io.github.s3cb34r.ttopdesk"
 POT_FILE="${REPOSITORY_ROOT}/po/${CATALOG_DOMAIN}.pot"
 readonly CATALOG_DOMAIN POT_FILE
@@ -44,7 +56,7 @@ xgettext \
     --keyword=i18ncp:1c,2,3 \
     --add-comments=TRANSLATORS \
     --package-name='TTop Desk' \
-    --package-version='0.1.15' \
+    --package-version="${PROJECT_VERSION}" \
     --copyright-holder='TTop Desk contributors' \
     --msgid-bugs-address='https://github.com/s3cb34r/TTop-Desk/issues' \
     --output="${TEMPORARY_POT}" \

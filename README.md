@@ -4,6 +4,12 @@ TTop Desk is a native KDE Plasma system-monitor widget. It is intended to
 provide a compact graphical companion to the wider TTop ecosystem while
 remaining independent from the existing TTop CLI project.
 
+Version 0.9.0 is the first public beta release candidate. Milestone 1.16 adds
+reproducible Plasma-widget, backend, and full Linux release artifacts plus a
+user-only installer that does not depend on a repository checkout. Release
+installation keeps the backend under the user's data directory and its service
+under the user's systemd configuration; no administrator access is required.
+
 Milestone 1.15 prepares the widget for release localization and reproducible
 visual QA. All static interface, settings, tooltip, state, and accessibility
 text uses a per-widget Plasma 5 localization adapter backed by KDE translation
@@ -87,10 +93,45 @@ Plasma-native and do not depend on the optional local backend foundation.
 SMART data, disk temperatures, and process controls remain future milestones,
 as does integration with a shared TTop Core backend.
 
+## Quick install from a release bundle
+
+TTop Desk 0.9.0 targets KDE Plasma 5.27 and Qt 5.15. After obtaining the Linux
+release archive:
+
+```bash
+tar -xzf ttop-desk-0.9.0-linux.tar.gz
+cd ttop-desk-0.9.0-linux
+./install.sh
+```
+
+The installer checks the bundle, Plasma 5, `kpackagetool5`, Python 3, `psutil`,
+and the systemd user session. It installs or upgrades only current-user files,
+preserves existing widget settings, and enables the backend automatically.
+Running it again performs a safe idempotent upgrade. Add **TTop Desk** from
+Plasma's widget selector if it is not already on the desktop.
+
+NVIDIA's NVML library is optional. Without it, installation succeeds, Top
+Processes remains available, and only NVIDIA GPU data reports unavailable.
+CPU, RAM, temperature, network, disk-I/O, and filesystem metrics remain native
+Plasma metrics and work while the backend is stopped.
+
+To uninstall runtime files without deleting Plasma configuration, run
+`./uninstall.sh` from the extracted bundle. Backend status and logs are
+available through:
+
+```bash
+systemctl --user status ttop-desk-backend
+journalctl --user -u ttop-desk-backend -f
+```
+
+After a native runtime upgrade, an already-running widget may need to be
+reopened or removed and added again. The installer never restarts the Plasma
+desktop or changes the system locale.
+
 ## Prerequisites
 
 The primary target is KDE Plasma 5.27.12 on Linux Mint based on Ubuntu 24.04.
-For direct development and installation, the system needs:
+For direct repository development and installation, the system needs:
 
 - KDE Plasma 5 and the Plasma Framework runtime
 - `plasmoidviewer` from the Plasma SDK (`plasma-sdk` on Ubuntu-family systems)
@@ -405,7 +446,9 @@ every system and is not required by the widget.
 
 ## Install, upgrade, and uninstall
 
-Install the current local package for the current user:
+The commands below are development-checkout helpers. End users should use the
+release bundle's `install.sh` and `uninstall.sh` described in **Quick install**.
+Install the current repository package for the current user:
 
 ```bash
 ./scripts/install.sh

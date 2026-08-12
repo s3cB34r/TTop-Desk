@@ -3,7 +3,13 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(ttop-desk VERSION 0.1.15 LANGUAGES CXX)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" TTOP_DESK_VERSION
+    LIMIT_COUNT 1 ENCODING UTF-8)
+if(NOT TTOP_DESK_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    message(FATAL_ERROR "VERSION must contain one semantic version")
+endif()
+
+project(ttop-desk VERSION "${TTOP_DESK_VERSION}" LANGUAGES CXX)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_CXX_STANDARD 17)

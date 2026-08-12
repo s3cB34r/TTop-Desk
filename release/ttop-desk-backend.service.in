@@ -1,0 +1,21 @@
+# Managed by TTop Desk release installer.
+[Unit]
+Description=TTop Desk local metrics backend
+Documentation=@BACKEND_DOCUMENTATION@
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=@BACKEND_DIRECTORY@
+ExecStart=@PYTHON_EXECUTABLE@ -m ttop_backend.main
+Restart=on-failure
+RestartSec=2
+UMask=0077
+Environment=PYTHONUNBUFFERED=1
+Environment=XDG_RUNTIME_DIR=%t
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_UNIX
+
+[Install]
+WantedBy=default.target

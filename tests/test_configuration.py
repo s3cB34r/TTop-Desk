@@ -136,8 +136,9 @@ class ConfigurationSchemaTests(unittest.TestCase):
 
     def test_plugin_identity_is_unchanged(self) -> None:
         metadata = json.loads((PACKAGE_ROOT / "metadata.json").read_text(encoding="utf-8"))
+        version = (REPOSITORY_ROOT / "VERSION").read_text(encoding="utf-8").strip()
         self.assertEqual(metadata["KPlugin"]["Id"], "io.github.s3cb34r.ttopdesk")
-        self.assertEqual(metadata["KPlugin"]["Version"], "0.1.15")
+        self.assertEqual(metadata["KPlugin"]["Version"], version)
 
 
 if __name__ == "__main__":
